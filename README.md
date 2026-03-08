@@ -1,2 +1,2 @@
-# maths_animations
-animations pour comprendre son cours de maths de MP2I/MPSI
+# CPGE_animations
+animations pour comprendre ses cours de MP2I/MPSI
