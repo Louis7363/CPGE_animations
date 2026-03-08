@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animations Mathématiques</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+    <!-- En-tête du site -->
+    <header class="bg-white shadow-sm border-b border-slate-200">
+        <div class="max-w-5xl mx-auto px-6 py-8">
+            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Animations Mathématiques</h1>
+            <p class="text-slate-500 mt-2 text-lg">Visualisation interactive et intuitive de concepts mathématiques.</p>
+        </div>
+    </header>
+
+    <!-- Contenu principal -->
+    <main class="max-w-5xl mx-auto px-6 py-10">
+        
+        <div class="flex items-center justify-between mb-8">
+            <h2 class="text-xl font-semibold text-slate-700">Catalogue des animations</h2>
+        </div>
+        
+        <!-- Grille pour les différentes animations (tu pourras en ajouter d'autres ici) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            <!-- Carte pour l'animation SEA/SEV -->
+            <a href="sea.html" class="block group">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 h-full transition-all duration-300 hover:shadow-md hover:border-blue-400 hover:-translate-y-1">
+                    
+                    <!-- Petite icône mathématique sympa -->
+                    <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-5 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+                        </svg>
+                    </div>
+                    
+                    <h3 class="text-lg font-bold text-slate-800 mb-2">Espace Affine vs Vectoriel</h3>
+                    <p class="text-slate-600 text-sm mb-6 line-clamp-3">
+                        Comprendre visuellement la différence entre une direction (SEV) et une position (SEA), et le lien avec le vecteur b-a.
+                    </p>
+                    
+                    <div class="mt-auto flex items-center text-blue-600 font-semibold text-sm">
+                        <span>Ouvrir l'animation</span>
+                        <svg class="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                        </svg>
+                    </div>
+                </div>
+            </a>
+
+            <!-- EXEMPLE de carte vide pour tes futures animations (commentée) -->
+            <!-- 
+            <a href="prochaine-animation.html" class="block group">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 h-full transition-all duration-300 hover:shadow-md hover:border-emerald-400 hover:-translate-y-1">
+                    <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mb-5 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-800 mb-2">Prochaine Animation</h3>
+                    <p class="text-slate-600 text-sm mb-6">Description de la prochaine animation mathématique que tu vas coder.</p>
+                    <div class="mt-auto flex items-center text-emerald-600 font-semibold text-sm">
+                        <span>Bientôt disponible</span>
+                    </div>
+                </div>
+            </a> 
+            -->
+
+        </div>
+    </main>
+
+    <!-- Pied de page -->
+    <footer class="mt-12 py-6 text-center text-sm text-slate-400">
+        <p>Créé pour mieux comprendre les maths !</p>
+    </footer>
+
+</body>
+</html>
