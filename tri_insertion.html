@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tri par Insertion - Animation MP2I</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        mono: ['Courier New', 'Consolas', 'Monaco', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #020617; overflow: hidden; }
+        #canvas-container { position: relative; width: 100vw; height: 100vh; }
+        canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+        
+        #ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(12px);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            width: 350px;
+            border: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            z-index: 50;
+        }
+
+        #log-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(2, 6, 23, 0.95);
+            backdrop-filter: blur(12px);
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            width: 320px;
+            height: 380px;
+            border: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            z-index: 50;
+        }
+
+        .log-entry {
+            animation: slideIn 0.3s ease-out;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed #334155;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #475569; border-radius: 10px; }
+    </style>
+</head>
+<body class="text-slate-300 font-sans selection:bg-emerald-500/30 selection:text-emerald-200">
+
+<div id="canvas-container">
+    <canvas id="sortCanvas"></canvas>
+    
+    <div id="ui-panel">
+        <div class="flex items-center justify-between mb-4">
+            <h1 class="text-lg font-bold text-white font-mono flex items-center">
+                <span class="text-emerald-500 mr-2">█</span> Tri par Insertion
+            </h1>
+            <a href="info.html" class="text-xs text-emerald-500 hover:text-emerald-400 border border-emerald-900 px-2 py-1 rounded bg-emerald-950/30 transition-colors">← Retour</a>
+        </div>
+        
+        <p class="text-xs text-slate-400 mb-4 pb-4 border-b border-slate-700">
+            Algorithme en O(n²). Il maintient une sous-liste triée et insère chaque nouvel élément à sa place en décalant les autres.
+        </p>
+
+        <div class="space-y-4">
+            <div>
+                <label class="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                    <span>Nombre d'éléments</span>
+                    <span id="val-size" class="text-emerald-500">12</span>
+                </label>
+                <!-- Ajusté pour des blocs visuels agréables -->
+                <input type="range" id="slider-size" min="5" max="25" value="12" class="w-full accent-emerald-500" oninput="updateSize()">
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 mt-4">
+                <button onclick="generateArray()" id="btn-generate" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 px-3 py-2 rounded text-xs font-semibold transition-colors">
+                    Nouveau Tableau
+                </button>
+                <button onclick="startSort()" id="btn-sort" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded text-xs font-bold transition-colors shadow-lg shadow-emerald-900/20">
+                    Trier !
+                </button>
+            </div>
+
+            <div class="pt-4 border-t border-slate-700 mt-2">
+                <label class="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                    <span>Vitesse d'animation</span>
+                </label>
+                <input type="range" id="slider-speed" min="1" max="10" value="6" class="w-full accent-emerald-500">
+                <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                    <span>Lente</span>
+                    <span>Rapide</span>
+                </div>
+            </div>
+
+            <div class="pt-2">
+                <h3 class="text-xs font-bold text-slate-500 mb-2">Légende :</h3>
+                <div class="text-[10px] space-y-1 text-slate-400">
+                    <div class="flex items-center"><span class="w-3 h-3 bg-emerald-500 inline-block mr-2 rounded-sm"></span> Position triée</div>
+                    <div class="flex items-center"><span class="w-3 h-3 bg-red-500 inline-block mr-2 rounded-sm"></span> Clé (élément soulevé)</div>
+                    <div class="flex items-center"><span class="w-3 h-3 bg-blue-500 inline-block mr-2 rounded-sm"></span> Élément comparé</div>
+                    <div class="flex items-center"><span class="w-3 h-3 bg-slate-600 inline-block mr-2 rounded-sm"></span> Non trié</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="log-panel">
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center border-b border-slate-700 pb-2">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M4 15h1m1 0h1m-7 0a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6z"></path></svg>
+            Trace d'exécution
+        </h2>
+        <div id="log-container" class="flex-grow overflow-y-auto custom-scroll text-xs font-mono flex flex-col-reverse">
+            <!-- Logs -->
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('sortCanvas');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+    
+    // UI Elements
+    const sliderSize = document.getElementById('slider-size');
+    const sliderSpeed = document.getElementById('slider-speed');
+    const valSize = document.getElementById('val-size');
+    const btnGenerate = document.getElementById('btn-generate');
+    const btnSort = document.getElementById('btn-sort');
+    const logContainer = document.getElementById('log-container');
+
+    // Algorithme State
+    let items = []; // Tableau d'objets visuels (ne perd JAMAIS ses éléments)
+    let logicalArray = []; // NOUVEAU : Tableau logique manipulé par le tri
+    let isSorting = false;
+    let abortSort = false;
+    
+    // Layout variables
+    let startX = 0;
+    let baseY = 0;
+    let cardStep = 0;
+    let cardWidth = 0;
+    let cardHeight = 0;
+    let holeIndex = -1; // NOUVEAU : Garde la trace de la position du trou pour l'affichage
+
+    // --- Rendu et utilitaires graphiques ---
+    
+    // Fonction robuste pour dessiner des rectangles arrondis
+    function drawRoundRect(ctx, x, y, w, h, radius) {
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + w - radius, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+        ctx.lineTo(x + w, y + h - radius);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+        ctx.lineTo(x + radius, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+    }
+
+    function resize() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+        calculateLayout();
+    }
+    window.addEventListener('resize', resize);
+
+    function calculateLayout() {
+        const leftPanelWidth = 390; 
+        const rightPanelWidth = 360; 
+        let availableWidth = width - leftPanelWidth - rightPanelWidth;
+        startX = leftPanelWidth + 20;
+
+        if (availableWidth < 300) {
+            availableWidth = width - 40;
+            startX = 20;
+        }
+
+        const size = items.length > 0 ? items.length : parseInt(sliderSize.value);
+        cardStep = availableWidth / size;
+        cardWidth = Math.min(cardStep * 0.85, 80); // Max 80px de large
+        cardHeight = cardWidth * 1.3; // Proportion carte à jouer
+        
+        baseY = height / 2 + 50; // Centré verticalement
+        
+        // Mettre à jour les cibles via le tableau logique (pour ne rien oublier)
+        if (logicalArray && logicalArray.length > 0) {
+            logicalArray.forEach((item, index) => {
+                if (item) {
+                    item.targetX = startX + index * cardStep;
+                    if(item.state !== 'key') item.targetY = baseY;
+                }
+            });
+            // Assurer que la carte soulevée garde sa cible en cas de redimensionnement de fenêtre
+            let keyItem = items.find(i => i.state === 'key');
+            if (keyItem && holeIndex !== -1) {
+                keyItem.targetX = startX + holeIndex * cardStep;
+                keyItem.targetY = baseY - cardHeight - 40;
+            }
+        }
+    }
+
+    function updateSize() {
+        if (isSorting) return;
+        valSize.textContent = sliderSize.value;
+        generateArray();
+    }
+
+    function generateArray() {
+        if (isSorting) abortSort = true;
+        
+        const size = parseInt(sliderSize.value);
+        items = [];
+        logicalArray = []; // Réinitialise le tableau logique
+        calculateLayout(); // Met à jour cardStep et startX
+
+        for (let i = 0; i < size; i++) {
+            let val = Math.floor(Math.random() * 90) + 10;
+            let obj = {
+                id: i,
+                val: val,
+                x: startX + i * cardStep,
+                y: baseY,
+                targetX: startX + i * cardStep,
+                targetY: baseY,
+                state: 'unsorted'
+            };
+            items.push(obj);
+            logicalArray.push(obj); // On l'ajoute aussi au tableau logique
+        }
+        
+        holeIndex = -1;
+        logContainer.innerHTML = '';
+        addLog("Nouveau tableau généré.", "info");
+    }
+
+    function addLog(message, type = 'info') {
+        const div = document.createElement('div');
+        div.className = 'log-entry';
+        
+        let colorClass = 'text-slate-300';
+        if(type === 'red') colorClass = 'text-red-400 font-bold';
+        if(type === 'blue') colorClass = 'text-blue-400';
+        if(type === 'highlight') colorClass = 'text-emerald-400 font-bold';
+        if(type === 'info') colorClass = 'text-slate-500 italic';
+
+        div.innerHTML = `<span class="text-slate-600 mr-2">></span><span class="${colorClass}">${message}</span>`;
+        logContainer.prepend(div);
+    }
+
+    function getDelay() {
+        const speed = parseInt(sliderSpeed.value);
+        return Math.max(20, 1000 - (speed * 95));
+    }
+
+    const sleep = () => new Promise(resolve => setTimeout(resolve, getDelay()));
+
+    function setButtonsState(sorting) {
+        btnSort.disabled = sorting;
+        if (sorting) {
+            btnSort.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+            btnSort.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+    }
+
+    // --- Boucle de Rendu Visuel (Indépendante de l'algorithme) ---
+    function draw() {
+        ctx.clearRect(0, 0, width, height);
+
+        // Dessiner des emplacements "vides" (slots) en arrière-plan
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < items.length; i++) {
+            let cx = startX + i * cardStep;
+            drawRoundRect(ctx, cx, baseY, cardWidth, cardHeight, 8);
+            ctx.stroke();
+        }
+
+        // Trier l'affichage pour que la "clé" (carte soulevée) soit dessinée au-dessus des autres
+        let sortedForRender = [...items].sort((a, b) => (a.state === 'key' ? 1 : -1));
+
+        sortedForRender.forEach(item => {
+            // Interpolation fluide (Lerp)
+            item.x += (item.targetX - item.x) * 0.15;
+            item.y += (item.targetY - item.y) * 0.15;
+
+            // Définir les couleurs
+            let bgColor, borderColor, textColor;
+            ctx.shadowBlur = 0;
+
+            if (item.state === 'key') {
+                bgColor = '#ef4444'; // Red
+                borderColor = '#fca5a5';
+                textColor = '#ffffff';
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = 'rgba(239, 68, 68, 0.5)';
+            } else if (item.state === 'compare') {
+                bgColor = '#3b82f6'; // Blue
+                borderColor = '#93c5fd';
+                textColor = '#ffffff';
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = 'rgba(59, 130, 246, 0.5)';
+            } else if (item.state === 'sorted') {
+                bgColor = '#10b981'; // Emerald
+                borderColor = '#6ee7b7';
+                textColor = '#ffffff';
+            } else {
+                bgColor = '#334155'; // Slate
+                borderColor = '#475569';
+                textColor = '#f8fafc';
+            }
+
+            // Dessiner la carte
+            drawRoundRect(ctx, item.x, item.y, cardWidth, cardHeight, 8);
+            ctx.fillStyle = bgColor;
+            ctx.fill();
+            ctx.strokeStyle = borderColor;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.shadowBlur = 0; // Reset shadow
+
+            // Dessiner la valeur
+            ctx.fillStyle = textColor;
+            let fontSize = Math.max(12, cardWidth * 0.4);
+            ctx.font = `bold ${fontSize}px Courier New`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(item.val, item.x + cardWidth / 2, item.y + cardHeight / 2);
+        });
+
+        requestAnimationFrame(draw);
+    }
+
+    // --- Logique du Tri par Insertion ---
+    async function startSort() {
+        if (isSorting) return;
+        isSorting = true;
+        abortSort = false;
+        setButtonsState(true);
+        logContainer.innerHTML = '';
+        
+        addLog("=== Début du Tri par Insertion ===", "highlight");
+        
+        // Le premier élément est considéré trié
+        if(logicalArray.length > 0) logicalArray[0].state = 'sorted';
+        
+        for (let i = 1; i < logicalArray.length; i++) {
+            if (abortSort) break;
+            
+            let keyItem = logicalArray[i]; // On pioche dans le tableau logique !
+            
+            addLog(`-----------------------`);
+            addLog(`Étape ${i}: Extraction de [${keyItem.val}]`, "red");
+            
+            // Soulever la carte
+            keyItem.state = 'key';
+            holeIndex = i; // Enregistrer l'emplacement actuel du trou
+            keyItem.targetY = baseY - cardHeight - 40; 
+            await sleep();
+            
+            let j = i - 1;
+            
+            while (j >= 0) {
+                if (abortSort) break;
+                
+                let compItem = logicalArray[j];
+                compItem.state = 'compare';
+                addLog(`Comparaison: [${compItem.val}] > [${keyItem.val}] ?`, "blue");
+                await sleep();
+                
+                if (compItem.val > keyItem.val) {
+                    addLog(`Oui. On décale [${compItem.val}] vers la droite.`);
+                    
+                    // On décale l'objet dans le tableau logique (L'affichage suit grâce aux objets)
+                    logicalArray[j + 1] = compItem;
+                    // On met à jour sa cible visuelle
+                    compItem.targetX = startX + (j + 1) * cardStep;
+                    holeIndex = j; // Le trou descend d'un cran
+                    
+                    await sleep();
+                    compItem.state = 'sorted'; // Reprend sa couleur triée
+                    j--;
+                } else {
+                    addLog(`Non. Place trouvée.`);
+                    compItem.state = 'sorted'; // Reprend sa couleur
+                    await sleep();
+                    break;
+                }
+            }
+            
+            if (abortSort) break;
+            
+            // Placer la clé dans son trou (logique)
+            logicalArray[j + 1] = keyItem;
+            holeIndex = j + 1;
+            keyItem.targetX = startX + (j + 1) * cardStep;
+            keyItem.targetY = baseY;
+            keyItem.state = 'sorted';
+            
+            addLog(`Insertion à l'index ${j + 1}`, "highlight");
+            await sleep();
+        }
+        
+        if (!abortSort) {
+            addLog("=== Tableau entièrement trié ! ===", "highlight");
+        } else {
+            addLog("=== Tri interrompu ===", "info");
+        }
+        
+        isSorting = false;
+        abortSort = false;
+        holeIndex = -1;
+        setButtonsState(false);
+    }
+
+    // --- Lancement ---
+    resize();
+    generateArray();
+    requestAnimationFrame(draw); // Démarre la boucle de rendu
+
+</script>
+</body>
+</html>
