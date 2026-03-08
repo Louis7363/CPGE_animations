@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Injective, Surjective, Bijective</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        /* Conteneur principal */
+        #canvas-container { 
+            position: absolute; 
+            inset: 0; 
+            display: flex; 
+        }
+
+        canvas { 
+            display: block; 
+            width: 100%; 
+            height: 100%; 
+            touch-action: none; 
+        }
+
+        #ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            width: 380px;
+            pointer-events: auto;
+            border: 1px solid #e2e8f0;
+            max-height: calc(100vh - 40px);
+            display: flex;
+            flex-direction: column;
+            z-index: 50;
+            overflow-y: auto;
+        }
+
+        .math-text { font-family: 'Courier New', Courier, monospace; font-weight: bold; }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 0.875rem;
+            font-weight: 700;
+            transition: all 0.3s ease;
+        }
+        .status-yes { background-color: #d1fae5; color: #047857; border: 1px solid #34d399; }
+        .status-no { background-color: #fee2e2; color: #b91c1c; border: 1px solid #f87171; }
+        
+        /* Custom scrollbar */
+        #ui-panel::-webkit-scrollbar { width: 6px; }
+        #ui-panel::-webkit-scrollbar-track { background: transparent; }
+        #ui-panel::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div id="canvas-container">
+    <canvas id="mappingCanvas"></canvas>
+    
+    <div id="ui-panel">
+        <div class="flex items-center justify-between mb-4 flex-shrink-0">
+            <h1 class="text-xl font-bold text-slate-800">Applications</h1>
+            <a href="index.html" class="text-sm text-blue-600 hover:underline">Retour</a>
+        </div>
+        
+        <p class="text-sm text-slate-600 mb-4 pb-4 border-b border-slate-200">
+            Reliez les éléments de l'ensemble de départ <span class="font-bold text-blue-600">A</span> vers l'arrivée <span class="font-bold text-rose-600">B</span> en tirant des flèches.
+        </p>
+
+        <div class="space-y-5">
+            
+            <!-- Analyse en temps réel -->
+            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Analyse de la fonction</h2>
+                
+                <div class="flex justify-between items-center">
+                    <span class="text-sm font-semibold text-slate-700">Injective ?</span>
+                    <span id="badge-inj" class="status-badge status-no">Non ❌</span>
+                </div>
+                <div class="text-xs text-slate-500 ml-2 mb-2" id="desc-inj">Au plus un antécédent par cible.</div>
+                
+                <div class="flex justify-between items-center pt-2 border-t border-slate-200">
+                    <span class="text-sm font-semibold text-slate-700">Surjective ?</span>
+                    <span id="badge-sur" class="status-badge status-yes">Oui ✅</span>
+                </div>
+                <div class="text-xs text-slate-500 ml-2 mb-2" id="desc-sur">Au moins un antécédent par cible.</div>
+
+                <div class="flex justify-between items-center pt-2 border-t border-slate-200">
+                    <span class="text-sm font-semibold text-slate-800">Bijective ?</span>
+                    <span id="badge-bij" class="status-badge status-no">Non ❌</span>
+                </div>
+            </div>
+
+            <!-- Contrôles du nombre d'éléments -->
+            <div class="space-y-3">
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Taille des ensembles</h2>
+                
+                <div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="text-blue-700 font-semibold">Départ (A) : <span id="val-A">4</span></span>
+                    </div>
+                    <input type="range" id="slider-A" min="1" max="7" value="4" class="w-full accent-blue-500">
+                </div>
+                
+                <div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="text-rose-700 font-semibold">Arrivée (B) : <span id="val-B">3</span></span>
+                    </div>
+                    <input type="range" id="slider-B" min="1" max="7" value="3" class="w-full accent-rose-500">
+                </div>
+            </div>
+
+            <!-- Boutons de préréglages -->
+            <div>
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Exemples types</h2>
+                <div class="grid grid-cols-2 gap-2">
+                    <button class="preset-btn p-2 text-xs bg-white border border-slate-300 rounded hover:bg-slate-50 text-slate-700" data-preset="inj-not-sur">Injective (pas surj.)</button>
+                    <button class="preset-btn p-2 text-xs bg-white border border-slate-300 rounded hover:bg-slate-50 text-slate-700" data-preset="sur-not-inj">Surjective (pas inj.)</button>
+                    <button class="preset-btn p-2 text-xs bg-white border border-emerald-300 rounded hover:bg-emerald-50 text-emerald-700 font-bold" data-preset="bij">Bijective</button>
+                    <button class="preset-btn p-2 text-xs bg-white border border-slate-300 rounded hover:bg-slate-50 text-slate-700" data-preset="none">Ni l'une ni l'autre</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('mappingCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // --- État de l'application ---
+    let numA = 4;
+    let numB = 3;
+    let links = [0, 1, 2, 2]; // links[i] = index dans B vers lequel pointe A[i]
+    
+    // Position et dimensionnement
+    let width, height;
+    let centerX_A, centerX_B, radiusY;
+
+    // Interaction
+    let draggingA = null; // Index du point A en cours de drag
+    let mouseX = 0, mouseY = 0;
+
+    // --- DOM Elements ---
+    const sliderA = document.getElementById('slider-A');
+    const sliderB = document.getElementById('slider-B');
+    const valA = document.getElementById('val-A');
+    const valB = document.getElementById('val-B');
+    
+    const badgeInj = document.getElementById('badge-inj');
+    const badgeSur = document.getElementById('badge-sur');
+    const badgeBij = document.getElementById('badge-bij');
+    const descInj = document.getElementById('desc-inj');
+    const descSur = document.getElementById('desc-sur');
+
+    // --- Fonctions de mise à jour ---
+
+    function evaluateMath() {
+        // Compter combien de fois chaque élément de B est "touché"
+        let countsB = new Array(numB).fill(0);
+        for(let i = 0; i < numA; i++) {
+            if(links[i] !== null && links[i] >= 0 && links[i] < numB) {
+                countsB[links[i]]++;
+            }
+        }
+
+        // Évaluation
+        const isInjective = countsB.every(c => c <= 1);
+        const isSurjective = countsB.every(c => c >= 1);
+        const isBijective = isInjective && isSurjective;
+
+        // Mise à jour UI : Badges
+        function updateBadge(el, isValid, textYes, textNo) {
+            el.className = `status-badge ${isValid ? 'status-yes' : 'status-no'}`;
+            el.innerHTML = isValid ? `${textYes} ✅` : `${textNo} ❌`;
+        }
+
+        updateBadge(badgeInj, isInjective, "Oui", "Non");
+        updateBadge(badgeSur, isSurjective, "Oui", "Non");
+        updateBadge(badgeBij, isBijective, "Oui", "Non");
+
+        // Mise à jour UI : Descriptions dynamiques pour aider à comprendre
+        if(isInjective) {
+            descInj.innerHTML = `<span class="text-emerald-600">Parfait : aucun élément de B ne reçoit plusieurs flèches.</span>`;
+        } else {
+            let pbIndex = countsB.findIndex(c => c > 1);
+            descInj.innerHTML = `<span class="text-rose-600">Échec : l'élément y<sub>${pbIndex+1}</sub> reçoit ${countsB[pbIndex]} flèches !</span>`;
+        }
+
+        if(isSurjective) {
+            descSur.innerHTML = `<span class="text-emerald-600">Parfait : tous les éléments de B reçoivent au moins une flèche.</span>`;
+        } else {
+            let pbIndex = countsB.findIndex(c => c === 0);
+            descSur.innerHTML = `<span class="text-rose-600">Échec : l'élément y<sub>${pbIndex+1}</sub> est tout seul (0 flèche).</span>`;
+        }
+        
+        return countsB; // Utilisé pour le dessin
+    }
+
+    function generateDefaultLinks() {
+        links = [];
+        for(let i = 0; i < numA; i++) {
+            // Essaie de lier de base, sinon pointe sur le dernier
+            links.push(Math.min(i, numB - 1));
+        }
+    }
+
+    function applyPreset(type) {
+        switch(type) {
+            case 'inj-not-sur':
+                sliderA.value = 3; sliderB.value = 5;
+                numA = 3; numB = 5;
+                links = [0, 2, 4];
+                break;
+            case 'sur-not-inj':
+                sliderA.value = 5; sliderB.value = 3;
+                numA = 5; numB = 3;
+                links = [0, 1, 1, 2, 2];
+                break;
+            case 'bij':
+                sliderA.value = 4; sliderB.value = 4;
+                numA = 4; numB = 4;
+                links = [1, 2, 3, 0]; // Un peu mélangé pour faire joli
+                break;
+            case 'none':
+                sliderA.value = 4; sliderB.value = 4;
+                numA = 4; numB = 4;
+                links = [0, 0, 2, 2]; // 1 et 3 sont vides, 0 et 2 ont des doublons
+                break;
+        }
+        valA.textContent = numA;
+        valB.textContent = numB;
+        draw();
+    }
+
+    // --- Dessin ---
+
+    function getPointCoords(index, total, centerX) {
+        // Distribuer verticalement
+        const spacing = (height * 0.7) / Math.max(7, total); 
+        const startY = height / 2 - ((total - 1) * spacing) / 2;
+        return {
+            x: centerX,
+            y: startY + index * spacing
+        };
+    }
+
+    function drawArrow(x1, y1, x2, y2, color, thickness) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = thickness;
+        
+        // Courbe de Bézier pour faire des flèches élégantes
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        const ctrlDist = Math.abs(x2 - x1) * 0.5;
+        ctx.bezierCurveTo(x1 + ctrlDist, y1, x2 - ctrlDist, y2, x2, y2);
+        ctx.stroke();
+
+        // Tête de flèche
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        // On calcule l'angle tangent à l'arrivée de la courbe (qui est horizontale à l'arrivée)
+        // La tangente en x2, y2 de la courbe de bézier arrive avec un angle de 0 (horizontal).
+        // Donc la tête de flèche pointe vers la droite : angle = 0
+        const headlen = 12;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - headlen * Math.cos(Math.PI/6), y2 - headlen * Math.sin(Math.PI/6));
+        ctx.lineTo(x2 - headlen * Math.cos(-Math.PI/6), y2 - headlen * Math.sin(-Math.PI/6));
+        ctx.fill();
+    }
+
+    function drawSetOvals() {
+        ctx.fillStyle = 'rgba(241, 245, 249, 0.5)'; // Fond très clair
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 2;
+        
+        // Calculer la hauteur des patates
+        const maxPts = Math.max(numA, numB);
+        const ovalHeight = (height * 0.7) * (maxPts/7) + 100;
+        const ovalWidth = 140;
+
+        // Oval A
+        ctx.beginPath();
+        ctx.ellipse(centerX_A, height/2, ovalWidth/2, ovalHeight/2, 0, 0, Math.PI*2);
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#1e293b'; ctx.font = 'bold 24px sans-serif';
+        ctx.fillText('A', centerX_A - 8, height/2 - ovalHeight/2 - 20);
+
+        // Oval B
+        ctx.beginPath();
+        ctx.ellipse(centerX_B, height/2, ovalWidth/2, ovalHeight/2, 0, 0, Math.PI*2);
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#1e293b'; ctx.font = 'bold 24px sans-serif';
+        ctx.fillText('B', centerX_B - 8, height/2 - ovalHeight/2 - 20);
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, width, height);
+
+        const countsB = evaluateMath();
+        drawSetOvals();
+
+        // 1. Dessiner les flèches établies
+        for(let i = 0; i < numA; i++) {
+            if(i === draggingA) continue; // On dessinera celle-là en interactif
+            
+            const target = links[i];
+            if(target !== null && target < numB) {
+                const pA = getPointCoords(i, numA, centerX_A);
+                const pB = getPointCoords(target, numB, centerX_B);
+                
+                // Couleur de la flèche dépend de l'état du point cible B
+                let arrowColor = '#94a3b8'; // Gris par défaut
+                if (countsB[target] > 1) arrowColor = '#f87171'; // Rouge si collision (Non-Injective)
+                else if (countsB[target] === 1) arrowColor = '#34d399'; // Vert parfait
+                
+                drawArrow(pA.x + 15, pA.y, pB.x - 20, pB.y, arrowColor, 3);
+            }
+        }
+
+        // 2. Dessiner la flèche en cours de drag
+        if(draggingA !== null) {
+            const pA = getPointCoords(draggingA, numA, centerX_A);
+            drawArrow(pA.x + 15, pA.y, mouseX, mouseY, '#3b82f6', 4);
+        }
+
+        // 3. Dessiner les points de l'ensemble A
+        for(let i = 0; i < numA; i++) {
+            const p = getPointCoords(i, numA, centerX_A);
+            const isDragging = (i === draggingA);
+            
+            ctx.fillStyle = isDragging ? '#2563eb' : '#3b82f6';
+            ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, Math.PI*2); ctx.fill();
+            
+            ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke();
+            
+            ctx.fillStyle = '#0f172a'; ctx.font = '14px sans-serif';
+            ctx.fillText(`x${i+1}`, p.x - 30, p.y + 5);
+        }
+
+        // 4. Dessiner les points de l'ensemble B
+        for(let j = 0; j < numB; j++) {
+            const p = getPointCoords(j, numB, centerX_B);
+            
+            // Le point B réagit si on le survole en drag, ou selon son état
+            let ptColor = '#64748b'; // Gris par défaut
+            
+            if(countsB[j] > 1) ptColor = '#ef4444'; // Rouge (Collision / Échec injectif)
+            else if(countsB[j] === 0) ptColor = '#f59e0b'; // Orange (Vide / Échec surjectif)
+            else ptColor = '#10b981'; // Émeraude (Exactement 1)
+
+            // Effet de hover pendant le drag
+            if(draggingA !== null && Math.hypot(p.x - mouseX, p.y - mouseY) < 30) {
+                ctx.beginPath(); ctx.arc(p.x, p.y, 16, 0, Math.PI*2); 
+                ctx.fillStyle = 'rgba(59, 130, 246, 0.2)'; ctx.fill();
+            }
+
+            ctx.fillStyle = ptColor;
+            ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, Math.PI*2); ctx.fill();
+            
+            ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke();
+            
+            ctx.fillStyle = '#0f172a'; ctx.font = '14px sans-serif';
+            ctx.fillText(`y${j+1}`, p.x + 15, p.y + 5);
+        }
+    }
+
+    // --- Events & Interaction ---
+
+    function resize() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Espace dispo à droite du panneau UI (380px + 20px padding)
+        const availableWidth = width - 400; 
+        
+        // Centrer les ensembles dans l'espace disponible
+        centerX_A = 400 + availableWidth * 0.3;
+        centerX_B = 400 + availableWidth * 0.7;
+
+        // Fallback si écran trop petit (mobile)
+        if (width < 800) {
+            centerX_A = width * 0.25;
+            centerX_B = width * 0.75;
+        }
+
+        draw();
+    }
+
+    window.addEventListener('resize', resize);
+
+    // Manipulation du drag & drop
+    function getMousePos(e) {
+        let cx = e.clientX;
+        let cy = e.clientY;
+        if(e.touches && e.touches.length > 0) {
+            cx = e.touches[0].clientX;
+            cy = e.touches[0].clientY;
+        }
+        const rect = canvas.getBoundingClientRect();
+        return { x: cx - rect.left, y: cy - rect.top };
+    }
+
+    function handleStart(e) {
+        if(e.target.tagName !== 'CANVAS') return;
+        const pos = getMousePos(e);
+        
+        // Chercher si on clique sur un point A
+        for(let i = 0; i < numA; i++) {
+            const p = getPointCoords(i, numA, centerX_A);
+            if(Math.hypot(p.x - pos.x, p.y - pos.y) < 25) {
+                draggingA = i;
+                mouseX = pos.x;
+                mouseY = pos.y;
+                draw();
+                e.preventDefault();
+                return;
+            }
+        }
+    }
+
+    function handleMove(e) {
+        if(draggingA === null) return;
+        e.preventDefault();
+        const pos = getMousePos(e);
+        mouseX = pos.x;
+        mouseY = pos.y;
+        draw();
+    }
+
+    function handleEnd(e) {
+        if(draggingA === null) return;
+        
+        // Chercher si on a relâché sur un point B
+        for(let j = 0; j < numB; j++) {
+            const p = getPointCoords(j, numB, centerX_B);
+            if(Math.hypot(p.x - mouseX, p.y - mouseY) < 30) {
+                links[draggingA] = j; // Connecter !
+                break;
+            }
+        }
+        
+        // Si relâché dans le vide, on garde l'ancien lien (ou on pourrait le supprimer, 
+        // mais mathématiquement une fonction DOIT avoir une image partout)
+
+        draggingA = null;
+        draw();
+    }
+
+    canvas.addEventListener('mousedown', handleStart);
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleEnd);
+    
+    canvas.addEventListener('touchstart', handleStart, {passive: false});
+    window.addEventListener('touchmove', handleMove, {passive: false});
+    window.addEventListener('touchend', handleEnd);
+
+    // UI Listeners
+    sliderA.addEventListener('input', (e) => {
+        numA = parseInt(e.target.value);
+        valA.textContent = numA;
+        generateDefaultLinks();
+        draw();
+    });
+
+    sliderB.addEventListener('input', (e) => {
+        numB = parseInt(e.target.value);
+        valB.textContent = numB;
+        generateDefaultLinks();
+        draw();
+    });
+
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => applyPreset(e.target.dataset.preset));
+    });
+
+    // Init
+    resize();
+</script>
+</body>
+</html>
