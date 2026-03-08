@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tri Fusion - Animation Arbre MP2I</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        mono: ['Courier New', 'Consolas', 'Monaco', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #020617; overflow: hidden; }
+        #canvas-container { position: relative; width: 100vw; height: 100vh; }
+        canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+        
+        #ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(12px);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            width: 350px;
+            border: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            z-index: 50;
+        }
+
+        #log-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(2, 6, 23, 0.95);
+            backdrop-filter: blur(12px);
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            width: 320px;
+            height: 380px;
+            border: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            z-index: 50;
+        }
+
+        .log-entry {
+            animation: slideIn 0.3s ease-out;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed #334155;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #475569; border-radius: 10px; }
+    </style>
+</head>
+<body class="text-slate-300 font-sans selection:bg-emerald-500/30 selection:text-emerald-200">
+
+<div id="canvas-container">
+    <canvas id="sortCanvas"></canvas>
+    
+    <div id="ui-panel">
+        <div class="flex items-center justify-between mb-4">
+            <h1 class="text-lg font-bold text-white font-mono flex items-center">
+                <span class="text-purple-500 mr-2">⋈</span> Tri Fusion (Arbre)
+            </h1>
+            <a href="info.html" class="text-xs text-emerald-500 hover:text-emerald-400 border border-emerald-900 px-2 py-1 rounded bg-emerald-950/30 transition-colors">← Retour</a>
+        </div>
+        
+        <p class="text-xs text-slate-400 mb-4 pb-4 border-b border-slate-700">
+            Observez l'arbre de récursion se former ! Les éléments descendent pour se diviser, puis remontent d'un niveau à chaque fusion pour reconstituer le tableau trié.
+        </p>
+
+        <div class="space-y-4">
+            <div>
+                <label class="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                    <span>Nombre d'éléments</span>
+                    <span id="val-size" class="text-purple-500">16</span>
+                </label>
+                <input type="range" id="slider-size" min="4" max="32" value="16" class="w-full accent-purple-500" oninput="updateSize()">
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 mt-4">
+                <button onclick="generateArray()" id="btn-generate" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 px-3 py-2 rounded text-xs font-semibold transition-colors">
+                    Nouveau Tableau
+                </button>
+                <button onclick="startSort()" id="btn-sort" class="bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded text-xs font-bold transition-colors shadow-lg shadow-purple-900/20">
+                    Trier !
+                </button>
+            </div>
+
+            <div class="pt-4 border-t border-slate-700 mt-2">
+                <label class="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                    <span>Vitesse d'animation</span>
+                </label>
+                <input type="range" id="slider-speed" min="1" max="10" value="6" class="w-full accent-purple-500">
+                <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                    <span>Lente</span>
+                    <span>Rapide</span>
+                </div>
+            </div>
+
+            <div class="pt-2">
+                <h3 class="text-xs font-bold text-slate-500 mb-2">Légende :</h3>
+                <div class="text-[10px] space-y-1 text-slate-400">
+                    <div class="flex items-center"><span class="w-3 h-3 bg-red-500 inline-block mr-2 rounded-sm"></span> Descente / Division</div>
+                    <div class="flex items-center"><span class="w-3 h-3 bg-blue-500 inline-block mr-2 rounded-sm"></span> Comparaison</div>
+                    <div class="flex items-center"><span class="w-3 h-3 bg-purple-500 inline-block mr-2 rounded-sm"></span> Choisi et Fusionné (Remonte)</div>
+                    <div class="flex items-center"><span class="w-3 h-3 bg-emerald-500 inline-block mr-2 rounded-sm"></span> Tri terminé</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="log-panel">
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center border-b border-slate-700 pb-2">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M4 15h1m1 0h1m-7 0a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6z"></path></svg>
+            Trace d'exécution
+        </h2>
+        <div id="log-container" class="flex-grow overflow-y-auto custom-scroll text-xs font-mono flex flex-col-reverse">
+            <!-- Logs -->
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('sortCanvas');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+    
+    // UI Elements
+    const sliderSize = document.getElementById('slider-size');
+    const sliderSpeed = document.getElementById('slider-speed');
+    const valSize = document.getElementById('val-size');
+    const btnGenerate = document.getElementById('btn-generate');
+    const btnSort = document.getElementById('btn-sort');
+    const logContainer = document.getElementById('log-container');
+
+    // Algorithme State
+    let items = []; // Visual objects
+    let logicalArray = []; // Logical array manipulated by algorithm
+    let isSorting = false;
+    let abortSort = false;
+    
+    // Layout variables
+    let startX = 0;
+    let baseY = 80;
+    let levelHeight = 80;
+    let maxDepth = 0;
+    let cardStep = 0;
+    let cardWidth = 0;
+    let cardHeight = 0;
+
+    // --- Rendu et utilitaires graphiques ---
+    
+    function drawRoundRect(ctx, x, y, w, h, radius) {
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + w - radius, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+        ctx.lineTo(x + w, y + h - radius);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+        ctx.lineTo(x + radius, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+    }
+
+    function resize() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+        calculateLayout();
+    }
+    window.addEventListener('resize', resize);
+
+    function calculateLayout() {
+        const leftPanelWidth = 390; 
+        const rightPanelWidth = 360; 
+        let availableWidth = width - leftPanelWidth - rightPanelWidth;
+        startX = leftPanelWidth + 20;
+
+        if (availableWidth < 300) {
+            availableWidth = width - 40;
+            startX = 20;
+        }
+
+        const size = items.length > 0 ? items.length : parseInt(sliderSize.value);
+        cardStep = availableWidth / size;
+        cardWidth = Math.min(cardStep * 0.85, 60);
+        cardHeight = cardWidth * 1.3;
+        
+        // Calculer la hauteur des niveaux de l'arbre
+        maxDepth = Math.ceil(Math.log2(size)) + 1;
+        let availableHeight = height - 120; // marges haut et bas
+        levelHeight = Math.min(availableHeight / maxDepth, 90);
+        baseY = 60; // Démarrage en haut
+        
+        if (logicalArray && logicalArray.length > 0) {
+            logicalArray.forEach((item, index) => {
+                if (item) {
+                    item.targetX = startX + index * cardStep;
+                    // On ne force pas targetY si un tri est en cours pour préserver l'arbre visuel
+                    if (!isSorting) item.targetY = baseY; 
+                }
+            });
+        }
+    }
+
+    function updateSize() {
+        if (isSorting) return;
+        valSize.textContent = sliderSize.value;
+        generateArray();
+    }
+
+    function generateArray() {
+        if (isSorting) abortSort = true;
+        
+        const size = parseInt(sliderSize.value);
+        items = [];
+        logicalArray = [];
+        
+        // Setup initial avant calcul du layout
+        for (let i = 0; i < size; i++) {
+            let val = Math.floor(Math.random() * 90) + 10;
+            let obj = {
+                id: i,
+                val: val,
+                x: 0, y: 0, targetX: 0, targetY: 0,
+                state: 'unsorted'
+            };
+            items.push(obj);
+            logicalArray.push(obj);
+        }
+        
+        calculateLayout();
+        
+        // Appliquer les coordonnées de départ
+        items.forEach((item, i) => {
+            item.x = startX + i * cardStep;
+            item.y = baseY;
+            item.targetX = item.x;
+            item.targetY = item.y;
+        });
+        
+        logContainer.innerHTML = '';
+        addLog("Nouveau tableau généré.", "info");
+    }
+
+    function addLog(message, type = 'info') {
+        const div = document.createElement('div');
+        div.className = 'log-entry';
+        
+        let colorClass = 'text-slate-300';
+        if(type === 'red') colorClass = 'text-red-400 font-bold';
+        if(type === 'blue') colorClass = 'text-blue-400';
+        if(type === 'purple') colorClass = 'text-purple-400 font-bold';
+        if(type === 'highlight') colorClass = 'text-emerald-400 font-bold';
+        if(type === 'info') colorClass = 'text-slate-500 italic';
+
+        div.innerHTML = `<span class="text-slate-600 mr-2">></span><span class="${colorClass}">${message}</span>`;
+        logContainer.prepend(div);
+    }
+
+    function getDelay() {
+        const speed = parseInt(sliderSpeed.value);
+        return Math.max(10, 1000 - (speed * 95));
+    }
+
+    const sleep = () => new Promise(resolve => setTimeout(resolve, getDelay()));
+
+    function setButtonsState(sorting) {
+        btnSort.disabled = sorting;
+        if (sorting) {
+            btnSort.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+            btnSort.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+    }
+
+    // --- Boucle de Rendu Visuel ---
+    function draw() {
+        ctx.clearRect(0, 0, width, height);
+
+        // Dessiner les lignes de niveaux de l'arbre
+        for(let d = 0; d <= maxDepth; d++) {
+            let y = baseY + d * levelHeight + cardHeight / 2;
+            
+            ctx.strokeStyle = 'rgba(30, 41, 59, 0.5)'; // Très discret
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(startX - 10, y);
+            ctx.lineTo(startX + items.length * cardStep, y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            ctx.fillStyle = '#334155';
+            ctx.font = '10px Courier New';
+            ctx.textAlign = 'right';
+            ctx.fillText(`Profondeur ${d}`, startX - 15, y + 4);
+        }
+
+        // Trier l'affichage pour les superpositions visuelles
+        let sortedForRender = [...items].sort((a, b) => {
+            if (a.state === 'compare') return 1;
+            if (b.state === 'compare') return -1;
+            return 0;
+        });
+
+        sortedForRender.forEach(item => {
+            // Interpolation fluide
+            item.x += (item.targetX - item.x) * 0.15;
+            item.y += (item.targetY - item.y) * 0.15;
+
+            // Couleurs par état
+            let bgColor, borderColor, textColor;
+            ctx.shadowBlur = 0;
+
+            if (item.state === 'active') {
+                bgColor = '#ef4444'; // Red (descend)
+                borderColor = '#fca5a5';
+                textColor = '#ffffff';
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = 'rgba(239, 68, 68, 0.4)';
+            } else if (item.state === 'compare') {
+                bgColor = '#3b82f6'; // Blue (comparaison en cours)
+                borderColor = '#93c5fd';
+                textColor = '#ffffff';
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = 'rgba(59, 130, 246, 0.6)';
+            } else if (item.state === 'merged') {
+                bgColor = '#8b5cf6'; // Purple (remonte fusionné)
+                borderColor = '#c4b5fd';
+                textColor = '#ffffff';
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = 'rgba(139, 92, 246, 0.5)';
+            } else if (item.state === 'sorted') {
+                bgColor = '#10b981'; // Emerald (fin)
+                borderColor = '#6ee7b7';
+                textColor = '#ffffff';
+            } else {
+                bgColor = '#334155'; // Slate (attente)
+                borderColor = '#475569';
+                textColor = '#f8fafc';
+            }
+
+            drawRoundRect(ctx, item.x, item.y, cardWidth, cardHeight, 6);
+            ctx.fillStyle = bgColor;
+            ctx.fill();
+            ctx.strokeStyle = borderColor;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            ctx.fillStyle = textColor;
+            let fontSize = Math.max(10, cardWidth * 0.4);
+            ctx.font = `bold ${fontSize}px Courier New`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(item.val, item.x + cardWidth / 2, item.y + cardHeight / 2);
+        });
+
+        requestAnimationFrame(draw);
+    }
+
+    // --- Logique du Tri Fusion (Arbre Récursif) ---
+
+    async function merge(left, mid, right, depth) {
+        addLog(`Fusion des sous-tableaux au Niveau ${depth+1} → remonte au Niv ${depth}`, "purple");
+        
+        let temp = [];
+        let i = left;
+        let j = mid + 1;
+        let k = left;
+
+        // Mettre en évidence les éléments prêts à être fusionnés (qui sont au niveau depth+1)
+        for(let idx = left; idx <= right; idx++) {
+            logicalArray[idx].state = 'blue'; // On les bleuit légèrement
+        }
+        await sleep();
+
+        // Comparaison et remontée (Merge back up to 'depth')
+        while (i <= mid && j <= right) {
+            if (abortSort) return;
+
+            let itemI = logicalArray[i];
+            let itemJ = logicalArray[j];
+
+            itemI.state = 'compare';
+            itemJ.state = 'compare';
+            await sleep();
+
+            if (itemI.val <= itemJ.val) {
+                itemI.state = 'merged';
+                itemI.targetY = baseY + depth * levelHeight; // Remonte au niveau parent
+                itemI.targetX = startX + k * cardStep;       // S'aligne à gauche
+                temp.push(itemI);
+                i++;
+                itemJ.state = 'unsorted'; // Dé-sélectionne
+            } else {
+                itemJ.state = 'merged';
+                itemJ.targetY = baseY + depth * levelHeight; // Remonte au niveau parent
+                itemJ.targetX = startX + k * cardStep;       // S'aligne
+                temp.push(itemJ);
+                j++;
+                itemI.state = 'unsorted'; // Dé-sélectionne
+            }
+            k++;
+            await sleep();
+        }
+
+        // Remonter le reste de la partie gauche
+        while (i <= mid) {
+            if (abortSort) return;
+            let itemI = logicalArray[i];
+            itemI.state = 'merged';
+            itemI.targetY = baseY + depth * levelHeight;
+            itemI.targetX = startX + k * cardStep;
+            temp.push(itemI);
+            i++;
+            k++;
+            await sleep();
+        }
+
+        // Remonter le reste de la partie droite
+        while (j <= right) {
+            if (abortSort) return;
+            let itemJ = logicalArray[j];
+            itemJ.state = 'merged';
+            itemJ.targetY = baseY + depth * levelHeight;
+            itemJ.targetX = startX + k * cardStep;
+            temp.push(itemJ);
+            j++;
+            k++;
+            await sleep();
+        }
+
+        // Actualiser le tableau logique avec l'ordre trié
+        for (let idx = 0; idx < temp.length; idx++) {
+            logicalArray[left + idx] = temp[idx];
+            // Remise au neutre (ou vert si tri final)
+            if (left === 0 && right === logicalArray.length - 1) {
+                logicalArray[left + idx].state = 'sorted';
+            } else {
+                logicalArray[left + idx].state = 'unsorted';
+            }
+        }
+    }
+
+    async function mergeSortRecursive(left, right, depth) {
+        if (abortSort) return;
+        
+        // 1. VISUALISATION : Descente des éléments au niveau de récursion actuel
+        for (let i = left; i <= right; i++) {
+            logicalArray[i].targetY = baseY + depth * levelHeight;
+            logicalArray[i].state = 'active'; // Rouge pour montrer la descente
+        }
+        
+        addLog(`Divise [${left}...${right}] au Niveau ${depth}`, "info");
+        await sleep();
+        
+        // Remise à la couleur d'attente
+        for (let i = left; i <= right; i++) {
+            logicalArray[i].state = 'unsorted';
+        }
+
+        // Condition d'arrêt : tableau de taille 1
+        if (left >= right) {
+            return;
+        }
+        
+        let mid = Math.floor((left + right) / 2);
+        
+        // Appel récursif gauche (descend au depth + 1)
+        await mergeSortRecursive(left, mid, depth + 1);
+        
+        // Appel récursif droit (descend au depth + 1)
+        await mergeSortRecursive(mid + 1, right, depth + 1);
+        
+        if (abortSort) return;
+        
+        // Fusion des deux parties (les éléments remonteront à la profondeur 'depth')
+        await merge(left, mid, right, depth);
+    }
+
+    async function startSort() {
+        if (isSorting) return;
+        isSorting = true;
+        abortSort = false;
+        setButtonsState(true);
+        logContainer.innerHTML = '';
+        
+        addLog("=== Début du Tri Fusion ===", "highlight");
+        
+        // On lance la récursion depuis la profondeur 0
+        await mergeSortRecursive(0, logicalArray.length - 1, 0);
+        
+        if (!abortSort) {
+            addLog("=== Tableau entièrement trié ! ===", "highlight");
+        } else {
+            addLog("=== Tri interrompu ===", "info");
+        }
+        
+        isSorting = false;
+        abortSort = false;
+        setButtonsState(false);
+    }
+
+    // --- Lancement ---
+    resize();
+    generateArray();
+    requestAnimationFrame(draw);
+
+</script>
+</body>
+</html>
