@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suites Adjacentes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #canvas-container { position: relative; width: 100vw; height: 100vh; cursor: grab; }
+        #canvas-container:active { cursor: grabbing; }
+        canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+        #ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            max-width: 420px;
+            pointer-events: auto;
+            border: 1px solid #e2e8f0;
+            max-height: calc(100vh - 40px);
+            display: flex;
+            flex-direction: column;
+        }
+        .math-text { font-family: 'Courier New', Courier, monospace; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div id="canvas-container">
+    <canvas id="graphCanvas"></canvas>
+    
+    <div id="ui-panel">
+        <div class="flex items-center justify-between mb-4 flex-shrink-0">
+            <h1 class="text-xl font-bold text-slate-800">Suites Adjacentes</h1>
+            <a href="index.html" class="text-sm text-blue-600 hover:underline">Retour</a>
+        </div>
+        
+        <p class="text-sm text-slate-600 mb-4 pb-4 border-b border-slate-200 flex-shrink-0">
+            Deux suites sont adjacentes si <span class="math-text text-blue-600">u<sub>n</sub></span> est croissante, <span class="math-text text-rose-600">v<sub>n</sub></span> est décroissante, et <span class="math-text">v<sub>n</sub> - u<sub>n</sub> → 0</span>. Elles convergent alors vers la même limite !
+        </p>
+
+        <div class="flex-shrink-0 space-y-4">
+            
+            <!-- Sélecteur de suites -->
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Exemples de suites</label>
+                <select id="seq-select" class="w-full p-2 border border-slate-300 rounded bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="harmonique">Convergence lente (type 1/n)</option>
+                    <option value="exp">Convergence rapide (type e⁻ⁿ)</option>
+                    <option value="pi">Série de Riemann (vers π²/6)</option>
+                </select>
+            </div>
+
+            <!-- Curseur N -->
+            <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 mt-2">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-sm font-semibold text-slate-800">Indice (N)</span>
+                    <span class="text-lg font-bold text-slate-700" id="val-n">5</span>
+                </div>
+                <input type="range" id="slider-n" min="0" max="50" step="1" value="5" class="w-full accent-slate-500">
+            </div>
+
+            <!-- Affichage des valeurs -->
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Valeurs au rang N</label>
+                <div class="p-3 bg-white rounded border border-slate-200 math-text text-sm" id="math-display">
+                    <!-- Généré dynamiquement -->
+                </div>
+            </div>
+
+            <!-- Légende -->
+            <div class="text-xs text-slate-500 mt-2 space-y-2">
+                <div class="flex items-center"><span class="w-3 h-3 rounded-full bg-blue-500 mr-2"></span> Suite u<sub>n</sub> (croissante)</div>
+                <div class="flex items-center"><span class="w-3 h-3 rounded-full bg-rose-500 mr-2"></span> Suite v<sub>n</sub> (décroissante)</div>
+                <div class="flex items-center"><span class="w-3 h-1 bg-emerald-500 mr-2 border-t-2 border-dashed border-emerald-500"></span> Limite commune L</div>
+            </div>
+
+            <button id="btn-reset" class="w-full py-2 px-2 bg-white border border-slate-300 rounded text-sm hover:bg-slate-100 transition mt-2">
+                Recentrer la vue
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('graphCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Définition des paires de suites adjacentes
+    const sequences = {
+        'harmonique': {
+            u: n => 2 - 2/(n+1),
+            v: n => 2 + 3/(n+1),
+            L: 2,
+            str_u: "2 - 2/(n+1)",
+            str_v: "2 + 3/(n+1)"
+        },
+        'exp': {
+            u: n => 1 - Math.exp(-n/5),
+            v: n => 1 + Math.exp(-n/8),
+            L: 1,
+            str_u: "1 - e^(-n/5)",
+            str_v: "1 + e^(-n/8)"
+        },
+        'pi': {
+            u: n => { let s=0; for(let i=1;i<=n+1;i++) s+=1/(i*i); return s; },
+            v: n => { let s=0; for(let i=1;i<=n+1;i++) s+=1/(i*i); return s + 1/(n+1); },
+            L: Math.PI * Math.PI / 6,
+            str_u: "Σ(1/k²)",
+            str_v: "Σ(1/k²) + 1/(n+1)"
+        }
+    };
+
+    let currentSeq = 'harmonique';
+    let currentN = 5;
+    const maxN = 50;
+
+    // Paramètres de vue asymétriques (car X va jusqu'à 50, Y varie peu)
+    let scaleX = 20;
+    let scaleY = 150;
+    let offsetX = 50;
+    let offsetY = 0; // Sera ajusté dans resize()
+    let width, height, originX, originY;
+
+    // Éléments UI
+    const selectSeq = document.getElementById('seq-select');
+    const sliderN = document.getElementById('slider-n');
+    const valN = document.getElementById('val-n');
+    const mathDisplay = document.getElementById('math-display');
+
+    function updateMath() {
+        valN.textContent = currentN;
+        
+        const seq = sequences[currentSeq];
+        const un = seq.u(currentN);
+        const vn = seq.v(currentN);
+        const diff = vn - un;
+
+        mathDisplay.innerHTML = `
+            <div class="space-y-2">
+                <div class="flex justify-between items-center text-blue-600">
+                    <span>u<sub>${currentN}</sub> :</span>
+                    <span class="font-bold">${un.toFixed(5)}</span>
+                </div>
+                <div class="flex justify-between items-center text-rose-600">
+                    <span>v<sub>${currentN}</sub> :</span>
+                    <span class="font-bold">${vn.toFixed(5)}</span>
+                </div>
+                <div class="pt-2 border-t border-slate-100 flex justify-between items-center text-purple-600">
+                    <span>Différence (v - u) :</span>
+                    <span class="font-bold">${diff.toFixed(5)}</span>
+                </div>
+                <div class="text-xs text-slate-400 mt-2 text-center pt-1">
+                    Limite commune L ≈ ${seq.L.toFixed(5)}
+                </div>
+            </div>
+        `;
+    }
+
+    selectSeq.addEventListener('change', (e) => { 
+        currentSeq = e.target.value; 
+        updateMath(); 
+        
+        // Centrage automatique adapté à la suite
+        offsetY = sequences[currentSeq].L > 1.5 ? 200 : 0;
+        updateOrigin();
+        draw(); 
+    });
+    
+    sliderN.addEventListener('input', (e) => { 
+        currentN = parseInt(e.target.value); 
+        updateMath(); 
+        draw(); 
+    });
+
+    document.getElementById('btn-reset').addEventListener('click', () => {
+        scaleX = 20; 
+        scaleY = 150; 
+        offsetX = 50; 
+        offsetY = sequences[currentSeq].L > 1.5 ? 200 : 0; 
+        updateOrigin(); 
+        draw();
+    });
+
+    function resize() {
+        width = window.innerWidth; height = window.innerHeight;
+        canvas.width = width; canvas.height = height;
+        
+        if (offsetY === 0) offsetY = height / 3; // Initiale offset
+        updateOrigin(); draw();
+    }
+
+    function updateOrigin() { 
+        originX = offsetX; 
+        originY = height - offsetY; 
+    }
+
+    window.addEventListener('resize', resize);
+
+    function drawGrid() {
+        ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1; ctx.font = '12px sans-serif'; ctx.fillStyle = '#94a3b8';
+        
+        // Lignes verticales (Axe N, pas de 5)
+        const stepX = scaleX * 5;
+        for (let x = (originX % stepX); x < width; x += stepX) {
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+            let mathX = Math.round((x - originX) / scaleX);
+            if (mathX >= 0 && originY > 0 && originY < height) ctx.fillText(mathX, x + 5, originY + 15);
+        }
+        
+        // Lignes horizontales (Axe Y, pas de 0.5)
+        const stepY = scaleY * 0.5;
+        let startY = (originY % stepY) - stepY;
+        for (let y = startY; y < height + stepY; y += stepY) {
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+            let mathY = ((originY - y) / scaleY).toFixed(1);
+            if (parseFloat(mathY) !== 0 && originX > 0 && originX < width) ctx.fillText(mathY, originX + 5, y - 5);
+        }
+        
+        // Axes principaux
+        ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(0, originY); ctx.lineTo(width, originY); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(originX, 0); ctx.lineTo(originX, height); ctx.stroke();
+        if (originX > 0 && originX < width && originY > 0 && originY < height) ctx.fillText('0', originX + 5, originY + 15);
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, width, height);
+        drawGrid();
+        
+        const seq = sequences[currentSeq];
+
+        // Tracer la limite L (ligne pointillée verte)
+        const screenL = originY - seq.L * scaleY;
+        ctx.strokeStyle = '#10B981'; // Émeraude
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 6]);
+        ctx.beginPath();
+        ctx.moveTo(0, screenL);
+        ctx.lineTo(width, screenL);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // Label de la limite
+        ctx.fillStyle = '#059669';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText('L = ' + seq.L.toFixed(2), width - 80, screenL - 10);
+
+        // Historique des points
+        const pointsU = [];
+        const pointsV = [];
+        
+        for(let n = 0; n <= maxN; n++) {
+            pointsU.push({ x: originX + n * scaleX, y: originY - seq.u(n) * scaleY });
+            pointsV.push({ x: originX + n * scaleX, y: originY - seq.v(n) * scaleY });
+        }
+
+        // Fonction utilitaire pour dessiner les lignes reliant les suites
+        const drawSequenceLines = (points, color, limitN) => {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.4; // Lignes semi-transparentes
+            ctx.beginPath();
+            for(let n = 0; n <= limitN; n++) {
+                if(n === 0) ctx.moveTo(points[n].x, points[n].y);
+                else ctx.lineTo(points[n].x, points[n].y);
+            }
+            ctx.stroke();
+            ctx.globalAlpha = 1.0;
+        };
+
+        drawSequenceLines(pointsU, '#3B82F6', currentN); // Lignes u_n (Bleu)
+        drawSequenceLines(pointsV, '#F43F5E', currentN); // Lignes v_n (Rose)
+
+        // Dessiner les points
+        for(let n = 0; n <= currentN; n++) {
+            const isCurrent = (n === currentN);
+            const radius = isCurrent ? 6 : 3;
+            
+            // Point u_n
+            ctx.fillStyle = '#3B82F6';
+            ctx.beginPath(); ctx.arc(pointsU[n].x, pointsU[n].y, radius, 0, Math.PI * 2); ctx.fill();
+            if(isCurrent) { ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke(); }
+
+            // Point v_n
+            ctx.fillStyle = '#F43F5E';
+            ctx.beginPath(); ctx.arc(pointsV[n].x, pointsV[n].y, radius, 0, Math.PI * 2); ctx.fill();
+            if(isCurrent) { ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke(); }
+        }
+
+        // Mettre en évidence la différence au rang actuel N
+        const pUN = pointsU[currentN];
+        const pVN = pointsV[currentN];
+        
+        ctx.strokeStyle = '#A855F7'; // Violet
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(pUN.x, pUN.y);
+        ctx.lineTo(pVN.x, pVN.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Accolade/Texte pour la différence
+        if(currentN < maxN - 2) {
+            ctx.fillStyle = '#9333EA';
+            ctx.font = 'bold 12px sans-serif';
+            const midY = (pUN.y + pVN.y) / 2;
+            ctx.fillText('v_N - u_N', pVN.x + 10, midY + 4);
+        }
+    }
+
+    // Gestion du Pan & Zoom
+    let isDragging = false; let lastMouseX = 0, lastMouseY = 0;
+    const container = document.getElementById('canvas-container');
+    
+    container.addEventListener('mousedown', (e) => { 
+        isDragging = true; lastMouseX = e.clientX; lastMouseY = e.clientY; 
+    });
+    
+    window.addEventListener('mouseup', () => isDragging = false);
+    
+    window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        offsetX += e.clientX - lastMouseX; 
+        offsetY -= e.clientY - lastMouseY; // Inverse car Y est vers le haut en maths
+        lastMouseX = e.clientX; lastMouseY = e.clientY;
+        updateOrigin(); draw();
+    });
+    
+    container.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const mouseX = e.clientX, mouseY = e.clientY;
+        const mathX = (mouseX - originX) / scaleX;
+        const mathY = (originY - mouseY) / scaleY;
+        
+        // Zoom différencié (on zoome globalement mais en gardant les proportions asymétriques)
+        const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+        scaleX *= zoomFactor;
+        scaleY *= zoomFactor;
+        
+        scaleX = Math.max(5, Math.min(scaleX, 100));
+        scaleY = Math.max(20, Math.min(scaleY, 1000));
+        
+        offsetX = mouseX - mathX * scaleX; 
+        offsetY = height - (mouseY + mathY * scaleY);
+        updateOrigin(); draw();
+    }, { passive: false });
+
+    // Init
+    updateMath();
+    resize();
+</script>
+</body>
+</html>
