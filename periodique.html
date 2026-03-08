@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oscillateur Harmonique - MP2I</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0f172a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #canvas-container { position: relative; width: 100vw; height: 100vh; cursor: grab; }
+        #canvas-container:active { cursor: grabbing; }
+        canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+        
+        .glass-panel {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border-radius: 12px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid #334155;
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            color: #f8fafc;
+        }
+        
+        #ui-panel { top: 20px; left: 20px; width: 350px; padding: 20px; }
+        #phase-panel { top: 20px; right: 20px; width: 300px; padding: 16px; }
+        
+        .math-text { font-family: 'Courier New', Courier, monospace; font-weight: bold; }
+        .slider-cyan { accent-color: #06b6d4; }
+        .slider-pink { accent-color: #ec4899; }
+        .slider-amber { accent-color: #f59e0b; }
+    </style>
+</head>
+<body>
+
+<div id="canvas-container">
+    <canvas id="simCanvas"></canvas>
+    
+    <!-- Panneau de contrôle (Gauche) -->
+    <div id="ui-panel" class="glass-panel">
+        <div class="flex items-center justify-between mb-4">
+            <h1 class="text-xl font-bold text-white flex items-center tracking-tight">
+                <span class="text-cyan-500 mr-2">≈</span> Masse-Ressort
+            </h1>
+            <a href="physique.html" class="text-xs text-cyan-500 hover:text-cyan-400 border border-cyan-900 px-2 py-1 rounded bg-cyan-950/30 transition-colors">← Retour</a>
+        </div>
+        
+        <p class="text-xs text-slate-400 mb-4 pb-4 border-b border-slate-700">
+            Modèle: <span class="math-text text-cyan-400">m·x" + f·x' + k·x = 0</span><br>
+            Tirez le bloc bleu avec la souris pour perturber le système !
+        </p>
+
+        <div class="space-y-5">
+            <!-- Raideur k -->
+            <div>
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-sm font-semibold text-slate-300">Raideur ressort (k)</span>
+                    <span class="text-sm font-bold text-cyan-400"><span id="val-k">20</span> N/m</span>
+                </div>
+                <input type="range" id="slider-k" min="1" max="100" step="1" value="20" class="w-full slider-cyan">
+            </div>
+
+            <!-- Masse m -->
+            <div>
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-sm font-semibold text-slate-300">Masse (m)</span>
+                    <span class="text-sm font-bold text-pink-400"><span id="val-m">2.0</span> kg</span>
+                </div>
+                <input type="range" id="slider-m" min="0.5" max="10" step="0.1" value="2" class="w-full slider-pink">
+            </div>
+
+            <!-- Frottement f -->
+            <div>
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-sm font-semibold text-slate-300">Frottement fluide (f)</span>
+                    <span class="text-sm font-bold text-amber-400"><span id="val-f">0.5</span> kg/s</span>
+                </div>
+                <input type="range" id="slider-f" min="0" max="15" step="0.1" value="0.5" class="w-full slider-amber">
+            </div>
+
+            <!-- Analyse en temps réel -->
+            <div class="bg-slate-900 rounded border border-slate-700 p-3 mt-2 text-xs space-y-2">
+                <div class="flex justify-between">
+                    <span class="text-slate-400">Pulsation propre ω₀:</span>
+                    <span class="math-text text-cyan-200" id="stat-w0">3.16 rad/s</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-400">Frottement critique f_c:</span>
+                    <span class="math-text text-amber-200" id="stat-fc">12.65 kg/s</span>
+                </div>
+                <div class="pt-2 border-t border-slate-800 flex justify-between items-center">
+                    <span class="text-slate-400">Régime:</span>
+                    <span class="font-bold text-emerald-400" id="stat-regime">Pseudo-périodique</span>
+                </div>
+            </div>
+
+            <button id="btn-reset" class="w-full py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-sm font-semibold transition-colors mt-2 text-white">
+                Immobiliser (x=0, v=0)
+            </button>
+        </div>
+    </div>
+
+    <!-- Portrait de Phase (Droite) -->
+    <div id="phase-panel" class="glass-panel">
+        <h2 class="text-sm font-bold text-white mb-2 flex items-center">
+            Portrait de Phase
+        </h2>
+        <div class="text-xs text-slate-400 mb-2">Vitesse v en fonction de la position x.</div>
+        
+        <!-- Canvas secondaire intégré dans l'UI pour le portrait -->
+        <div class="w-full aspect-square bg-slate-950 rounded border border-slate-700 relative overflow-hidden">
+            <canvas id="phaseCanvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+            
+            <!-- Labels axes -->
+            <div class="absolute top-2 left-1/2 ml-1 text-[10px] text-pink-400 font-mono">v</div>
+            <div class="absolute top-1/2 mt-1 right-2 text-[10px] text-cyan-400 font-mono">x</div>
+        </div>
+        
+        <div class="text-[10px] text-slate-500 mt-2 text-center">
+            L'énergie mécanique se dissipe sous forme de spirale vers l'attracteur (0,0).
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- Canvas Principaux ---
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    const phaseCanvas = document.getElementById('phaseCanvas');
+    const pCtx = phaseCanvas.getContext('2d');
+    
+    let width, height;
+    
+    // --- Variables Physiques ---
+    let k = 20; // Raideur (N/m)
+    let m = 2;  // Masse (kg)
+    let f = 0.5; // Coeff frottement (kg/s)
+    
+    let x = 3;  // Position (m), x=0 est l'équilibre
+    let v = 0;  // Vitesse (m/s)
+    let t = 0;  // Temps simulé
+    
+    // Échelle visuelle
+    const PPM = 50; // Pixels par mètre
+    let eqX = 0;    // Position d'équilibre à l'écran
+    let eqY = 0;
+    
+    // Historique pour les graphes
+    let history = []; // Stocke {x, v, t}
+    const maxHistory = 600;
+
+    // Interaction
+    let isDragging = false;
+    
+    // UI Elements
+    const sliderK = document.getElementById('slider-k');
+    const sliderM = document.getElementById('slider-m');
+    const sliderF = document.getElementById('slider-f');
+    const valK = document.getElementById('val-k');
+    const valM = document.getElementById('val-m');
+    const valF = document.getElementById('val-f');
+    
+    const statW0 = document.getElementById('stat-w0');
+    const statFc = document.getElementById('stat-fc');
+    const statRegime = document.getElementById('stat-regime');
+
+    function resize() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Portrait de phase canvas
+        const rect = phaseCanvas.parentElement.getBoundingClientRect();
+        phaseCanvas.width = rect.width;
+        phaseCanvas.height = rect.height;
+        
+        // Origine du système physique
+        eqX = width / 2;
+        eqY = height / 3; // Un tiers en haut pour le ressort, le bas pour le graphe
+    }
+    window.addEventListener('resize', resize);
+
+    function updateStats() {
+        const w0 = Math.sqrt(k / m);
+        const fc = 2 * Math.sqrt(k * m);
+        
+        statW0.textContent = w0.toFixed(2) + " rad/s";
+        statFc.textContent = fc.toFixed(2) + " kg/s";
+        
+        if (f === 0) {
+            statRegime.textContent = "Périodique (Non amorti)";
+            statRegime.className = "font-bold text-sky-400";
+        } else if (f < fc) {
+            statRegime.textContent = "Pseudo-périodique";
+            statRegime.className = "font-bold text-emerald-400";
+        } else if (Math.abs(f - fc) < 0.1) {
+            statRegime.textContent = "Régime critique";
+            statRegime.className = "font-bold text-amber-400";
+        } else {
+            statRegime.textContent = "Apériodique";
+            statRegime.className = "font-bold text-rose-400";
+        }
+    }
+
+    function readInputs() {
+        k = parseFloat(sliderK.value); valK.textContent = k;
+        m = parseFloat(sliderM.value); valM.textContent = m;
+        f = parseFloat(sliderF.value); valF.textContent = f;
+        updateStats();
+    }
+
+    sliderK.addEventListener('input', readInputs);
+    sliderM.addEventListener('input', readInputs);
+    sliderF.addEventListener('input', readInputs);
+
+    document.getElementById('btn-reset').addEventListener('click', () => {
+        x = 0; v = 0; history = [];
+    });
+
+    // --- Moteur Physique ---
+    function physicsStep(dt) {
+        if (isDragging) {
+            v = 0; // Si tenu par la souris, vitesse nulle
+            return;
+        }
+        
+        // Méthode d'Euler semi-implicite (suffisamment stable pour cette simu)
+        // a = -(k/m)*x - (f/m)*v
+        let a = (-k * x - f * v) / m;
+        v += a * dt;
+        x += v * dt;
+        t += dt;
+        
+        // Limiteur de sécurité pour éviter l'explosion mathématique si gros bug
+        if(x > 15) { x = 15; v = 0; }
+        if(x < -15) { x = -15; v = 0; }
+
+        // Enregistrement historique à chaque frame pour une courbe parfaitement lisse
+        history.push({x: x, v: v, t: t});
+        if (history.length > maxHistory) history.shift();
+    }
+
+    // --- Dessin ---
+    function drawSpring(startX, startY, endX, endY) {
+        ctx.strokeStyle = '#94a3b8'; // Slate 400
+        ctx.lineWidth = 3;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        
+        const numCoils = 15;
+        const totalLen = endX - startX;
+        const step = totalLen / (numCoils + 2);
+        
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(startX + step, startY); // Attache mur
+        
+        for (let i = 1; i <= numCoils; i++) {
+            let cx = startX + step + i * step;
+            let cy = startY + (i % 2 === 0 ? 20 : -20);
+            ctx.lineTo(cx, cy);
+        }
+        
+        ctx.lineTo(endX - step, endY);
+        ctx.lineTo(endX, endY); // Attache masse
+        ctx.stroke();
+    }
+
+    function drawTimeGraph() {
+        if (history.length === 0) return;
+        
+        const graphY = height * 0.75; // Position Y de la ligne temporelle centrale
+        const graphHeight = height * 0.2; // Espace alloué
+        
+        // Axe temporel
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, graphY);
+        ctx.lineTo(width, graphY);
+        ctx.stroke();
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = '12px sans-serif';
+        ctx.fillText('Temps (t)', width - 60, graphY - 10);
+        ctx.fillText('x(t)', 20, graphY - graphHeight + 20);
+
+        // Tracer la courbe x(t)
+        ctx.strokeStyle = '#06b6d4'; // Cyan
+        ctx.lineWidth = 3;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = 'rgba(6, 182, 212, 0.5)';
+        
+        ctx.beginPath();
+        for (let i = 0; i < history.length; i++) {
+            let pt = history[i];
+            // Écoulement du temps de droite à gauche (espacement ajusté pour le nouvel historique)
+            let px = width - (history.length - i) * 2; 
+            let py = graphY - pt.x * 20; // 20 pixels par mètre pour le graphe
+            
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+    }
+
+    function drawPhasePortrait() {
+        pCtx.clearRect(0, 0, phaseCanvas.width, phaseCanvas.height);
+        
+        const cx = phaseCanvas.width / 2;
+        const cy = phaseCanvas.height / 2;
+        
+        // Axes
+        pCtx.strokeStyle = '#334155';
+        pCtx.lineWidth = 1;
+        pCtx.beginPath();
+        pCtx.moveTo(0, cy); pCtx.lineTo(phaseCanvas.width, cy); // Axe X
+        pCtx.moveTo(cx, 0); pCtx.lineTo(cx, phaseCanvas.height); // Axe V
+        pCtx.stroke();
+
+        if (history.length < 2) return;
+
+        // Tracé de la spirale
+        pCtx.strokeStyle = '#ec4899'; // Pink
+        pCtx.lineWidth = 2;
+        pCtx.lineJoin = 'round';
+        
+        // Échelles locales pour le portrait
+        const scaleX = phaseCanvas.width / 10; // Prévu pour x entre -5 et 5
+        const scaleV = phaseCanvas.height / 20; // Prévu pour v entre -10 et 10
+
+        pCtx.beginPath();
+        for (let i = 0; i < history.length; i++) {
+            let px = cx + history[i].x * scaleX;
+            let py = cy - history[i].v * scaleV; // Y vers le haut
+            
+            if (i === 0) pCtx.moveTo(px, py);
+            else pCtx.lineTo(px, py);
+        }
+        pCtx.stroke();
+
+        // Point actuel (bout de la spirale)
+        let currPx = cx + x * scaleX;
+        let currPy = cy - v * scaleV;
+        
+        pCtx.fillStyle = '#f8fafc';
+        pCtx.shadowBlur = 10;
+        pCtx.shadowColor = '#ec4899';
+        pCtx.beginPath();
+        pCtx.arc(currPx, currPy, 4, 0, Math.PI * 2);
+        pCtx.fill();
+        pCtx.shadowBlur = 0;
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, width, height);
+
+        // Mur fixe (gauche)
+        const wallX = 50;
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(wallX - 20, eqY - 60, 20, 120);
+        
+        // Ligne pointillée équilibre
+        ctx.strokeStyle = 'rgba(100, 116, 139, 0.3)';
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(eqX, eqY - 100);
+        ctx.lineTo(eqX, eqY + 100);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#64748b';
+        ctx.font = '14px sans-serif';
+        ctx.fillText('x = 0', eqX - 15, eqY - 110);
+
+        // Calcul position masse à l'écran
+        const massScreenX = eqX + x * PPM;
+
+        // Dessiner le ressort
+        drawSpring(wallX, eqY, massScreenX - 30, eqY);
+
+        // Dessiner la masse
+        ctx.fillStyle = '#06b6d4'; // Cyan
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = 'rgba(6, 182, 212, 0.4)';
+        if (isDragging) {
+            ctx.fillStyle = '#22d3ee';
+            ctx.shadowColor = 'rgba(34, 211, 238, 0.8)';
+            ctx.shadowBlur = 25;
+        }
+        ctx.fillRect(massScreenX - 30, eqY - 30, 60, 60);
+        ctx.shadowBlur = 0;
+        
+        // Bordure masse
+        ctx.strokeStyle = '#cffafe';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(massScreenX - 30, eqY - 30, 60, 60);
+        
+        // Texte "m"
+        ctx.fillStyle = '#083344';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.fillText('m', massScreenX - 10, eqY + 7);
+
+        // Graphes
+        drawTimeGraph();
+        drawPhasePortrait();
+    }
+
+    // --- Boucle Principale ---
+    let lastTime = performance.now();
+    function animate(currentTime) {
+        // dt en secondes (limité pour ne pas exploser si on change d'onglet)
+        let dt = (currentTime - lastTime) / 1000;
+        if (dt > 0.1) dt = 0.016; 
+        lastTime = currentTime;
+
+        physicsStep(dt);
+        draw();
+
+        requestAnimationFrame(animate);
+    }
+
+    // --- Interactions Souris (Drag & Drop de la masse) ---
+    function getMouseX(e) {
+        return e.clientX || (e.touches && e.touches[0].clientX);
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+        let mx = getMouseX(e);
+        let massScreenX = eqX + x * PPM;
+        // Hitbox un peu plus large
+        if (Math.abs(mx - massScreenX) < 50) {
+            isDragging = true;
+            history = []; // Reset graphe
+            t = 0;
+        }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        let mx = getMouseX(e);
+        // Conversion pixels écran -> mètres
+        x = (mx - eqX) / PPM;
+        
+        // Limites physiques pour l'écran
+        if(x > 8) x = 8;
+        if(x < -8) x = -8;
+    });
+
+    window.addEventListener('mouseup', () => isDragging = false);
+
+    // Support Tactile
+    canvas.addEventListener('touchstart', (e) => {
+        let mx = getMouseX(e);
+        let massScreenX = eqX + x * PPM;
+        if (Math.abs(mx - massScreenX) < 50) {
+            isDragging = true;
+            history = [];
+            t = 0;
+            e.preventDefault();
+        }
+    }, {passive: false});
+    window.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        let mx = getMouseX(e);
+        x = (mx - eqX) / PPM;
+        if(x > 8) x = 8; if(x < -8) x = -8;
+        e.preventDefault();
+    }, {passive: false});
+    window.addEventListener('touchend', () => isDragging = false);
+
+    // --- Init ---
+    readInputs();
+    resize();
+    requestAnimationFrame(animate);
+
+</script>
+</body>
+</html>
