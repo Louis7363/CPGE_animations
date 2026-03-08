@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lemme des 3 Pentes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #canvas-container { position: relative; width: 100vw; height: 100vh; cursor: grab; }
+        #canvas-container:active { cursor: grabbing; }
+        canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+        #ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            max-width: 420px;
+            pointer-events: auto;
+            border: 1px solid #e2e8f0;
+            max-height: calc(100vh - 40px);
+            display: flex;
+            flex-direction: column;
+        }
+        .math-text { font-family: 'Courier New', Courier, monospace; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div id="canvas-container">
+    <canvas id="graphCanvas"></canvas>
+    
+    <div id="ui-panel">
+        <div class="flex items-center justify-between mb-4 flex-shrink-0">
+            <h1 class="text-xl font-bold text-slate-800">Lemme des 3 Pentes</h1>
+            <a href="index.html" class="text-sm text-blue-600 hover:underline">Retour</a>
+        </div>
+        
+        <p class="text-sm text-slate-600 mb-4 pb-4 border-b border-slate-200 flex-shrink-0">
+            Pour une fonction convexe, si <span class="math-text text-xs">x₁ < x₂ < x₃</span>, alors les pentes des sécantes sont ordonnées et de plus en plus raides !
+        </p>
+
+        <div class="flex-shrink-0 space-y-4">
+            
+            <div class="text-xs text-slate-500 mb-2 italic">
+                Bougez les 3 points librement. Le système les classera automatiquement de gauche à droite (A, B, C).
+            </div>
+
+            <!-- Curseurs des points -->
+            <div class="space-y-2">
+                <input type="range" id="slider-1" min="-5" max="5" step="0.1" value="-3" class="w-full accent-slate-400">
+                <input type="range" id="slider-2" min="-5" max="5" step="0.1" value="0" class="w-full accent-slate-400">
+                <input type="range" id="slider-3" min="-5" max="5" step="0.1" value="3" class="w-full accent-slate-400">
+            </div>
+
+            <!-- Affichage des pentes -->
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Comparaison des Pentes (f(x) = x²/2)</label>
+                <div class="p-3 bg-white rounded border border-slate-200 math-text text-sm" id="math-display">
+                    <!-- Généré dynamiquement -->
+                </div>
+            </div>
+
+            <button id="btn-reset" class="w-full py-2 px-2 bg-white border border-slate-300 rounded text-sm hover:bg-slate-100 transition mt-2">
+                Recentrer la vue
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('graphCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Fonction convexe f(x) = x^2 / 2
+    const f = x => (x * x) / 2;
+
+    // État (non triés)
+    let p1 = -3.0;
+    let p2 = 0.0;
+    let p3 = 3.0;
+
+    // Paramètres de vue
+    let scale = 70;
+    let offsetX = 0;
+    let offsetY = 150;
+    let width, height, originX, originY;
+
+    // Éléments UI
+    const slider1 = document.getElementById('slider-1');
+    const slider2 = document.getElementById('slider-2');
+    const slider3 = document.getElementById('slider-3');
+    const mathDisplay = document.getElementById('math-display');
+
+    function updateMath() {
+        // Trier les points pour s'assurer que a < b < c
+        const sorted = [p1, p2, p3].sort((a, b) => a - b);
+        const [a, b, c] = sorted;
+
+        // Calcul des pentes (taux d'accroissement)
+        // Protection contre division par zéro si deux points se superposent
+        const slopeAB = (b !== a) ? (f(b) - f(a)) / (b - a) : "—";
+        const slopeAC = (c !== a) ? (f(c) - f(a)) / (c - a) : "—";
+        const slopeBC = (c !== b) ? (f(c) - f(b)) / (c - b) : "—";
+
+        mathDisplay.innerHTML = `
+            <div class="space-y-2">
+                <div class="flex justify-between items-center text-emerald-600">
+                    <span>Pente [A,B] :</span>
+                    <span class="font-bold">${typeof slopeAB === 'number' ? slopeAB.toFixed(2) : slopeAB}</span>
+                </div>
+                <div class="text-center text-slate-400 text-xs">≤</div>
+                <div class="flex justify-between items-center text-purple-600">
+                    <span>Pente [A,C] :</span>
+                    <span class="font-bold">${typeof slopeAC === 'number' ? slopeAC.toFixed(2) : slopeAC}</span>
+                </div>
+                <div class="text-center text-slate-400 text-xs">≤</div>
+                <div class="flex justify-between items-center text-rose-600">
+                    <span>Pente [B,C] :</span>
+                    <span class="font-bold">${typeof slopeBC === 'number' ? slopeBC.toFixed(2) : slopeBC}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    slider1.addEventListener('input', (e) => { p1 = parseFloat(e.target.value); updateMath(); draw(); });
+    slider2.addEventListener('input', (e) => { p2 = parseFloat(e.target.value); updateMath(); draw(); });
+    slider3.addEventListener('input', (e) => { p3 = parseFloat(e.target.value); updateMath(); draw(); });
+
+    document.getElementById('btn-reset').addEventListener('click', () => {
+        scale = 70; offsetX = 0; offsetY = 150; updateOrigin(); draw();
+    });
+
+    function resize() {
+        width = window.innerWidth; height = window.innerHeight;
+        canvas.width = width; canvas.height = height;
+        updateOrigin(); draw();
+    }
+
+    function updateOrigin() { originX = width / 2 + offsetX; originY = height / 2 + offsetY; }
+
+    window.addEventListener('resize', resize);
+
+    function drawGrid() {
+        ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1; ctx.font = '12px sans-serif'; ctx.fillStyle = '#94a3b8';
+        const step = scale;
+        for (let x = (originX % step) - step; x < width + step; x += step) {
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+            let mathX = Math.round((x - originX) / scale);
+            if (mathX !== 0 && originY > 0 && originY < height) ctx.fillText(mathX, x + 5, originY + 15);
+        }
+        for (let y = (originY % step) - step; y < height + step; y += step) {
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+            let mathY = Math.round((originY - y) / scale);
+            if (mathY !== 0 && originX > 0 && originX < width) ctx.fillText(mathY, originX + 5, y - 5);
+        }
+        ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(0, originY); ctx.lineTo(width, originY); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(originX, 0); ctx.lineTo(originX, height); ctx.stroke();
+    }
+
+    // Fonction utilitaire pour dessiner une ligne prolongée
+    function drawExtendedLine(pA, pB, color, lineWidth) {
+        if(pA.x === pB.x) return; // Superposés
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lineWidth;
+        
+        // Pente à l'écran
+        const m = (pB.y - pA.y) / (pB.x - pA.x);
+        
+        // Extension de 150 pixels de chaque côté
+        const dx = 150;
+        const x1 = pA.x - dx;
+        const y1 = pA.y - m * dx;
+        const x2 = pB.x + dx;
+        const y2 = pB.y + m * dx;
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, width, height);
+        drawGrid();
+        
+        // Tracer la fonction f(x)
+        ctx.strokeStyle = '#93C5FD';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        for (let px = 0; px <= width; px += 2) {
+            let mathX = (px - originX) / scale;
+            let mathY = f(mathX);
+            let py = originY - mathY * scale;
+            if (px === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+
+        // Trier les points
+        const sorted = [p1, p2, p3].sort((a, b) => a - b);
+        const [a, b, c] = sorted;
+
+        const pts = [
+            { mathX: a, label: 'A', screen: { x: originX + a * scale, y: originY - f(a) * scale } },
+            { mathX: b, label: 'B', screen: { x: originX + b * scale, y: originY - f(b) * scale } },
+            { mathX: c, label: 'C', screen: { x: originX + c * scale, y: originY - f(c) * scale } }
+        ];
+
+        // Tracer les 3 sécantes (prolongées pour bien voir les angles)
+        drawExtendedLine(pts[0].screen, pts[1].screen, '#10B981', 3); // AB (Emeraude)
+        drawExtendedLine(pts[0].screen, pts[2].screen, '#9333EA', 3); // AC (Violet)
+        drawExtendedLine(pts[1].screen, pts[2].screen, '#E11D48', 3); // BC (Rose/Rouge)
+
+        // Tracer les segments intérieurs plus épais pour bien les repérer
+        ctx.lineWidth = 4;
+        
+        // AB
+        ctx.strokeStyle = '#059669'; ctx.beginPath();
+        ctx.moveTo(pts[0].screen.x, pts[0].screen.y); ctx.lineTo(pts[1].screen.x, pts[1].screen.y); ctx.stroke();
+        
+        // AC (décalé très légèrement ou dashed pour qu'on le voie)
+        ctx.strokeStyle = '#7E22CE'; ctx.setLineDash([5, 5]); ctx.beginPath();
+        ctx.moveTo(pts[0].screen.x, pts[0].screen.y); ctx.lineTo(pts[2].screen.x, pts[2].screen.y); ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // BC
+        ctx.strokeStyle = '#BE123C'; ctx.beginPath();
+        ctx.moveTo(pts[1].screen.x, pts[1].screen.y); ctx.lineTo(pts[2].screen.x, pts[2].screen.y); ctx.stroke();
+
+        // Dessiner les points
+        pts.forEach(p => {
+            ctx.fillStyle = '#1E293B';
+            ctx.beginPath(); ctx.arc(p.screen.x, p.screen.y, 7, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke();
+            
+            ctx.fillStyle = '#0F172A'; ctx.font = 'bold 16px sans-serif';
+            ctx.fillText(p.label, p.screen.x - 5, p.screen.y - 15);
+        });
+    }
+
+    // Gestion du Pan & Zoom
+    let isDragging = false; let lastMouseX = 0, lastMouseY = 0;
+    const container = document.getElementById('canvas-container');
+    container.addEventListener('mousedown', (e) => { isDragging = true; lastMouseX = e.clientX; lastMouseY = e.clientY; });
+    window.addEventListener('mouseup', () => isDragging = false);
+    window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        offsetX += e.clientX - lastMouseX; offsetY += e.clientY - lastMouseY;
+        lastMouseX = e.clientX; lastMouseY = e.clientY;
+        updateOrigin(); draw();
+    });
+    container.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const mouseX = e.clientX, mouseY = e.clientY;
+        const mathX = (mouseX - originX) / scale, mathY = (originY - mouseY) / scale;
+        if (e.deltaY < 0) scale *= 1.1; else scale *= 0.9;
+        scale = Math.max(10, Math.min(scale, 500));
+        offsetX = mouseX - width / 2 - mathX * scale; offsetY = mouseY - height / 2 + mathY * scale;
+        updateOrigin(); draw();
+    }, { passive: false });
+
+    // Init
+    updateMath();
+    resize();
+</script>
+</body>
+</html>
