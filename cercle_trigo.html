@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cercle Trigonométrique</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #canvas-container { position: relative; width: 100vw; height: 100vh; cursor: crosshair; }
+        canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+        #ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            max-width: 380px;
+            pointer-events: auto;
+            border: 1px solid #e2e8f0;
+            max-height: calc(100vh - 40px);
+            display: flex;
+            flex-direction: column;
+            z-index: 50;
+        }
+        .math-text { font-family: 'Courier New', Courier, monospace; font-weight: bold; }
+        .val-cos { color: #EF4444; } /* Rose/Rouge */
+        .val-sin { color: #3B82F6; } /* Bleu */
+        .val-tan { color: #10B981; } /* Emeraude */
+    </style>
+</head>
+<body>
+
+<div id="canvas-container">
+    <canvas id="trigoCanvas"></canvas>
+    
+    <div id="ui-panel">
+        <div class="flex items-center justify-between mb-4 flex-shrink-0">
+            <h1 class="text-xl font-bold text-slate-800">Cercle Trigo</h1>
+            <a href="index.html" class="text-sm text-blue-600 hover:underline">Retour</a>
+        </div>
+        
+        <p class="text-sm text-slate-600 mb-4 pb-4 border-b border-slate-200 flex-shrink-0">
+            Tournez le point <span class="font-bold">M</span> autour du cercle pour visualiser <span class="val-cos font-bold">cos(θ)</span>, <span class="val-sin font-bold">sin(θ)</span> et <span class="val-tan font-bold">tan(θ)</span>.
+        </p>
+
+        <div class="flex-shrink-0 space-y-4">
+            
+            <!-- Curseur d'angle -->
+            <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-sm font-semibold text-slate-800">Angle (θ)</span>
+                    <span class="text-lg font-bold text-slate-700" id="val-angle-deg">45°</span>
+                </div>
+                <input type="range" id="slider-angle" min="0" max="360" step="1" value="45" class="w-full accent-slate-500">
+                <div class="text-center mt-2 text-sm math-text text-slate-600" id="val-angle-rad">
+                    π / 4 rad
+                </div>
+            </div>
+
+            <!-- Affichage des valeurs -->
+            <div class="space-y-3">
+                <label class="block text-sm font-semibold text-slate-700">Coordonnées</label>
+                
+                <div class="p-3 bg-white rounded border border-slate-200 text-sm space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold text-slate-600">cos(θ) = </span>
+                        <span class="math-text val-cos text-lg" id="display-cos">0.71</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold text-slate-600">sin(θ) = </span>
+                        <span class="math-text val-sin text-lg" id="display-sin">0.71</span>
+                    </div>
+                    <div class="flex justify-between items-center pt-2 border-t border-slate-100">
+                        <span class="font-semibold text-slate-600">tan(θ) = <span class="text-xs font-normal text-slate-400">(sin/cos)</span></span>
+                        <span class="math-text val-tan text-lg" id="display-tan">1.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Options d'affichage -->
+            <div class="mt-2 space-y-2">
+                <label class="flex items-center space-x-2 text-sm text-slate-700 cursor-pointer">
+                    <input type="checkbox" id="show-tan" checked class="accent-emerald-500 rounded">
+                    <span>Afficher l'axe des tangentes</span>
+                </label>
+                <label class="flex items-center space-x-2 text-sm text-slate-700 cursor-pointer">
+                    <input type="checkbox" id="snap-angles" checked class="accent-slate-500 rounded">
+                    <span>Magnétisme (Angles remarquables)</span>
+                </label>
+            </div>
+
+            <div class="text-xs text-slate-500 mt-2 bg-blue-50 p-2 rounded border border-blue-100">
+                💡 <strong>Astuce :</strong> Vous pouvez glisser la souris n'importe où sur l'écran pour tourner le point !
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('trigoCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Paramètres
+    let angleDeg = 45; // Angle initial en degrés
+    let scale = 200;   // Rayon du cercle en pixels
+    let originX, originY;
+    let width, height;
+
+    // Angles remarquables (en degrés)
+    const remarkableAngles = [0, 30, 45, 60, 90, 120, 135, 150, 180, 210, 225, 240, 270, 300, 315, 330, 360];
+
+    // UI Elements
+    const sliderAngle = document.getElementById('slider-angle');
+    const valAngleDeg = document.getElementById('val-angle-deg');
+    const valAngleRad = document.getElementById('val-angle-rad');
+    const displayCos = document.getElementById('display-cos');
+    const displaySin = document.getElementById('display-sin');
+    const displayTan = document.getElementById('display-tan');
+    const cbShowTan = document.getElementById('show-tan');
+    const cbSnap = document.getElementById('snap-angles');
+
+    // Convertisseurs de texte pour les radians (fractions de pi)
+    function getRadString(deg) {
+        if(deg === 0 || deg === 360) return "0 rad";
+        const gcd = (a, b) => b ? gcd(b, a % b) : a;
+        const num = deg;
+        const den = 180;
+        const div = gcd(num, den);
+        const n = num / div;
+        const d = den / div;
+        
+        let res = "";
+        if (n === 1) res += "π";
+        else res += n + "π";
+        
+        if (d !== 1) res += " / " + d;
+        return res + " rad";
+    }
+
+    function updateMath() {
+        const rad = angleDeg * Math.PI / 180;
+        const cosVal = Math.cos(rad);
+        const sinVal = Math.sin(rad);
+        let tanVal = Math.tan(rad);
+
+        // Affichage UI
+        valAngleDeg.textContent = `${angleDeg}°`;
+        valAngleRad.textContent = getRadString(angleDeg);
+        sliderAngle.value = angleDeg;
+        
+        // Protection contre l'infini pour la tangente (90° et 270°)
+        const isVertical = (angleDeg === 90 || angleDeg === 270);
+
+        displayCos.textContent = Math.abs(cosVal) < 0.0001 ? "0.00" : cosVal.toFixed(2);
+        displaySin.textContent = Math.abs(sinVal) < 0.0001 ? "0.00" : sinVal.toFixed(2);
+        
+        if (isVertical) {
+            displayTan.textContent = "∞";
+            displayTan.style.fontSize = "1.5rem";
+        } else {
+            displayTan.textContent = tanVal.toFixed(2);
+            displayTan.style.fontSize = ""; // Reset
+        }
+    }
+
+    function resize() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+        
+        // On centre un peu vers la droite pour ne pas être sous le panneau
+        originX = width / 2 + 100;
+        originY = height / 2;
+        
+        // Ajuster le rayon (scale) en fonction de la taille de l'écran pour mobile
+        scale = Math.min(width, height) * 0.3;
+        
+        draw();
+    }
+
+    window.addEventListener('resize', resize);
+
+    function drawGrid() {
+        ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1; ctx.font = '12px sans-serif'; ctx.fillStyle = '#94a3b8';
+        
+        // Unités tous les 0.5
+        const step = scale * 0.5;
+        
+        for (let x = (originX % step); x < width; x += step) {
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+        }
+        for (let y = (originY % step); y < height; y += step) {
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+        }
+        
+        // Axes principaux
+        ctx.strokeStyle = '#64748B'; ctx.lineWidth = 2;
+        
+        // Axe X (Cosinus)
+        ctx.beginPath(); ctx.moveTo(0, originY); ctx.lineTo(width, originY); ctx.stroke();
+        // Flèche X
+        ctx.beginPath(); ctx.moveTo(width - 15, originY - 5); ctx.lineTo(width, originY); ctx.lineTo(width - 15, originY + 5); ctx.fill();
+        ctx.fillText('cos', width - 30, originY + 20);
+
+        // Axe Y (Sinus)
+        ctx.beginPath(); ctx.moveTo(originX, 0); ctx.lineTo(originX, height); ctx.stroke();
+        // Flèche Y
+        ctx.beginPath(); ctx.moveTo(originX - 5, 15); ctx.lineTo(originX, 0); ctx.lineTo(originX + 5, 15); ctx.fill();
+        ctx.fillText('sin', originX + 10, 20);
+
+        // Repères 1, -1
+        ctx.fillStyle = '#475569';
+        ctx.fillText('1', originX + scale + 5, originY + 15);
+        ctx.fillText('-1', originX - scale - 20, originY + 15);
+        ctx.fillText('1', originX + 5, originY - scale - 5);
+        ctx.fillText('-1', originX + 5, originY + scale + 15);
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, width, height);
+        drawGrid();
+
+        const rad = angleDeg * Math.PI / 180;
+        const cosVal = Math.cos(rad);
+        const sinVal = Math.sin(rad);
+
+        const px = originX + cosVal * scale;
+        const py = originY - sinVal * scale;
+
+        // 1. Cercle Trigonométrique
+        ctx.beginPath();
+        ctx.arc(originX, originY, scale, 0, Math.PI * 2);
+        ctx.strokeStyle = '#94A3B8';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // 2. Arc de cercle pour l'angle
+        ctx.beginPath();
+        // Arc() prend des angles par rapport à l'axe x, sens horaire. Notre axe Y mathématique est inversé.
+        ctx.arc(originX, originY, scale * 0.25, 0, -rad, rad > 0);
+        ctx.lineTo(originX, originY);
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.2)'; // Ambre
+        ctx.fill();
+        ctx.strokeStyle = '#F59E0B';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Texte θ
+        const thetaX = originX + Math.cos(-rad/2) * (scale * 0.35);
+        const thetaY = originY + Math.sin(-rad/2) * (scale * 0.35);
+        ctx.fillStyle = '#D97706';
+        ctx.font = 'italic bold 16px serif';
+        ctx.fillText('θ', thetaX, thetaY + 5);
+
+        // 3. Axe des Tangentes (si coché)
+        if (cbShowTan.checked) {
+            const tanX = originX + scale;
+            
+            // Ligne tangente en x=1
+            ctx.beginPath();
+            ctx.moveTo(tanX, 0);
+            ctx.lineTo(tanX, height);
+            ctx.strokeStyle = 'rgba(16, 185, 129, 0.3)'; // Vert très clair
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            if (angleDeg !== 90 && angleDeg !== 270) {
+                const tanVal = Math.tan(rad);
+                const pTanY = originY - tanVal * scale;
+
+                // Ligne de projection depuis l'origine passant par M jusqu'à la tangente
+                ctx.beginPath();
+                ctx.moveTo(originX, originY);
+                ctx.lineTo(tanX, pTanY);
+                ctx.strokeStyle = '#A7F3D0'; // Emerald très clair
+                ctx.setLineDash([5, 5]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Segment de tangente
+                ctx.beginPath();
+                ctx.moveTo(tanX, originY);
+                ctx.lineTo(tanX, pTanY);
+                ctx.strokeStyle = '#10B981'; // Emerald
+                ctx.lineWidth = 4;
+                ctx.stroke();
+
+                // Point sur l'axe des tangentes
+                ctx.fillStyle = '#059669';
+                ctx.beginPath(); ctx.arc(tanX, pTanY, 4, 0, Math.PI*2); ctx.fill();
+            }
+        }
+
+        // 4. Rayon OM
+        ctx.beginPath();
+        ctx.moveTo(originX, originY);
+        ctx.lineTo(px, py);
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // 5. Projections (Cosinus et Sinus)
+        // Lignes pointillées
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = '#94A3B8';
+        ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, originY); ctx.stroke(); // vers cos
+        ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(originX, py); ctx.stroke(); // vers sin
+        ctx.setLineDash([]);
+
+        // Segment Cosinus (Rouge/Rose)
+        ctx.beginPath();
+        ctx.moveTo(originX, originY);
+        ctx.lineTo(px, originY);
+        ctx.strokeStyle = '#EF4444';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // Segment Sinus (Bleu)
+        ctx.beginPath();
+        ctx.moveTo(originX, originY);
+        ctx.lineTo(originX, py);
+        ctx.strokeStyle = '#3B82F6';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // 6. Point M
+        ctx.fillStyle = '#1E293B';
+        ctx.beginPath();
+        ctx.arc(px, py, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Étiquette M
+        ctx.fillStyle = '#0F172A';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText('M', px + 10, py - 10);
+
+        // Étiquettes au centre
+        // On décale un peu les textes pour qu'ils soient lisibles
+        if(Math.abs(cosVal) > 0.1) {
+            ctx.fillStyle = '#EF4444';
+            ctx.font = 'bold 14px sans-serif';
+            ctx.fillText('cos', originX + (cosVal * scale)/2 - 10, originY + (sinVal > 0 ? 15 : -5));
+        }
+        
+        if(Math.abs(sinVal) > 0.1) {
+            ctx.fillStyle = '#3B82F6';
+            ctx.font = 'bold 14px sans-serif';
+            ctx.fillText('sin', originX + (cosVal > 0 ? -25 : 5), originY - (sinVal * scale)/2 + 5);
+        }
+    }
+
+    // Gestion de l'interaction (Souris / Tactile)
+    let isDragging = false;
+
+    function handleInteraction(e) {
+        if (!isDragging) return;
+        
+        let clientX = e.clientX;
+        let clientY = e.clientY;
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        }
+
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = clientX - rect.left;
+        const mouseY = clientY - rect.top;
+
+        // Calcul de l'angle par rapport au centre (Attention, l'axe Y est inversé à l'écran)
+        let rad = Math.atan2(originY - mouseY, mouseX - originX);
+        if (rad < 0) rad += 2 * Math.PI; // Garder l'angle entre 0 et 2PI
+
+        let deg = Math.round(rad * 180 / Math.PI);
+
+        // Magnétisme sur les angles remarquables si l'option est cochée
+        if (cbSnap.checked) {
+            let closest = deg;
+            let minDist = 360;
+            for (let remDeg of remarkableAngles) {
+                const dist = Math.abs(deg - remDeg);
+                if (dist < 10 && dist < minDist) { // Seuil de 10 degrés
+                    minDist = dist;
+                    closest = remDeg;
+                }
+            }
+            deg = closest;
+        }
+
+        if (deg === 360) deg = 0; // Ramener 360 à 0
+        
+        angleDeg = deg;
+        updateMath();
+        draw();
+    }
+
+    canvas.addEventListener('mousedown', () => isDragging = true);
+    window.addEventListener('mouseup', () => isDragging = false);
+    window.addEventListener('mousemove', handleInteraction);
+
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); isDragging = true; handleInteraction(e); }, {passive: false});
+    window.addEventListener('touchend', () => isDragging = false);
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleInteraction(e); }, {passive: false});
+
+    // Écouteurs UI
+    sliderAngle.addEventListener('input', (e) => {
+        angleDeg = parseInt(e.target.value);
+        if (angleDeg === 360) angleDeg = 0;
+        updateMath();
+        draw();
+    });
+
+    cbShowTan.addEventListener('change', draw);
+    cbSnap.addEventListener('change', draw); // Juste redessiner au cas où on voudrait forcer
+
+    // Init
+    resize();
+    updateMath();
+
+</script>
+</body>
+</html>
