@@ -1,363 +1,362 @@
 <!DOCTYPE html>
-<html lang="fr" class="dark">
+<html lang="fr" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Informatique MP2I - Animations</title>
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
     <script>
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
-                        mono: ['Courier New', 'Consolas', 'Monaco', 'monospace'],
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    },
+                    colors: {
+                        ide: {
+                            bg: '#000000',      // Ultra dark
+                            card: '#0a0a0a',    // Neutral black
+                            border: '#1f1f22',  // Subtle gray border
+                            text: '#a1a1aa',    // Zinc 400
+                            accent: '#a855f7',  // Purple 500
+                            accentLight: '#d8b4fe', // Purple 300
+                            keyword: '#ec4899', // Pink 500
+                            string: '#10b981',  // Emerald 500
+                            comment: '#52525b'  // Zinc 600
+                        }
                     }
                 }
             }
         }
     </script>
     <style>
-        body { background-color: #020617; /* slate-950 */ overflow-x: hidden; }
-        
-        /* Animations d'entrée pour les cartes */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .card-animate {
-            opacity: 0;
-            animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        body {
+            background-color: #000000;
+            color: #a1a1aa;
         }
 
-        /* Curseur clignotant façon terminal */
-        .blinking-cursor::after {
-            content: '_';
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #000000; }
+        ::-webkit-scrollbar-thumb { background: #1f1f22; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+
+        /* Carte moderne type "Vercel / VSCode" */
+        .code-card {
+            background: linear-gradient(180deg, rgba(24,24,27,0.4) 0%, rgba(10,10,10,0.8) 100%);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .code-card:hover {
+            border-color: rgba(168, 85, 247, 0.4); /* ide-accent */
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(168, 85, 247, 0.1);
+        }
+
+        /* Curseur clignotant */
+        .cursor-blink {
             animation: blink 1s step-end infinite;
+            border-left: 2px solid #a855f7;
+            margin-left: 2px;
         }
-        @keyframes blink { 50% { opacity: 0; } }
-        
-        /* Effets Glow pour les bordures au survol */
-        .glow-red-hover:hover { box-shadow: 0 0 20px rgba(239, 68, 68, 0.2); }
-        .glow-emerald-hover:hover { box-shadow: 0 0 20px rgba(16, 185, 129, 0.2); }
-        .glow-purple-hover:hover { box-shadow: 0 0 20px rgba(168, 85, 247, 0.2); }
-        .glow-amber-hover:hover { box-shadow: 0 0 20px rgba(245, 158, 11, 0.2); }
-        .glow-sky-hover:hover { box-shadow: 0 0 20px rgba(14, 165, 233, 0.2); }
-        .glow-blue-hover:hover { box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); }
-        
-        /* Style du fond réseau */
-        #network-bg {
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            z-index: 0;
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* Effet de lueur d'arrière-plan */
+        .glow-bg {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(168,85,247,0.1) 0%, rgba(0,0,0,0) 70%);
+            top: -200px;
+            right: -200px;
             pointer-events: none;
-            opacity: 0.8;
+            z-index: 0;
         }
-        
-        .content-wrapper { position: relative; z-index: 10; display: flex; flex-direction: column; min-height: 100vh;}
     </style>
 </head>
-<body class="text-slate-300 font-sans selection:bg-emerald-500/30 selection:text-emerald-200">
+<body class="font-sans antialiased selection:bg-ide-accent/30 selection:text-white min-h-screen flex flex-col relative overflow-x-hidden">
 
-    <!-- Fond animé Graphe/Réseau -->
-    <canvas id="network-bg"></canvas>
+    <!-- Lueur d'ambiance -->
+    <div class="glow-bg"></div>
 
-    <div class="content-wrapper">
-        <!-- En-tête du site -->
-        <header class="bg-slate-950/80 backdrop-blur-md shadow-sm border-b border-slate-800 sticky top-0 z-50 transition-all duration-300">
-            <div class="max-w-6xl mx-auto px-6 py-5 flex justify-between items-center">
-                <div class="flex items-center">
-                    <a href="index.html" class="mr-6 p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-400 hover:text-emerald-400 hover:border-emerald-500/50 transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                    </a>
-                    <div>
-                        <h1 class="text-2xl font-bold text-white font-mono tracking-tight flex items-center">
-                            <span class="text-emerald-500 mr-2">~/</span>informatique<span class="blinking-cursor text-emerald-500"></span>
-                        </h1>
-                    </div>
-                </div>
-                <div class="hidden md:flex text-sm font-mono text-slate-500">
-                    <span class="text-emerald-600">let</span> <span class="text-blue-400">mp2i</span> = <span class="text-orange-400">"Animations"</span>;;
+    <!-- Navigation Moderne -->
+    <nav class="border-b border-white/5 bg-black/50 backdrop-blur-xl sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <a href="index.html" class="flex items-center space-x-2 text-zinc-400 hover:text-white transition-colors group">
+                    <i data-lucide="arrow-left" class="w-4 h-4 group-hover:-translate-x-1 transition-transform"></i>
+                    <span class="font-mono text-sm">cd ..</span>
+                </a>
+                <div class="flex items-center space-x-2 font-mono text-sm">
+                    <span class="text-ide-keyword">let</span>
+                    <span class="text-zinc-200">mp2i</span>
+                    <span class="text-ide-keyword">=</span>
+                    <span class="text-ide-string">"Animations"</span>;
                 </div>
             </div>
-        </header>
+        </div>
+    </nav>
 
-        <!-- Contenu principal -->
-        <main class="max-w-6xl mx-auto px-6 py-12 flex-grow">
-            
-            <div class="mb-12 border-l-4 border-emerald-500 pl-6 py-2">
-                <h2 class="text-3xl font-bold text-white mb-2">Algorithmique & Structures de Données</h2>
-                <p class="text-lg text-slate-400">Visualisez l'exécution des algorithmes en temps réel pour mieux comprendre leur complexité et leur fonctionnement en mémoire.</p>
-            </div>
-            
-            <!-- Grille des animations Informatique -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <!-- Header -->
+    <header class="py-20 relative z-10">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
+                <div>
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="p-2 bg-ide-accent/10 rounded-lg border border-ide-accent/20">
+                            <i data-lucide="terminal" class="w-6 h-6 text-ide-accentLight"></i>
+                        </div>
+                        <span class="font-mono text-ide-comment text-sm">/usr/bin/mp2i</span>
+                    </div>
+                    <h1 class="text-4xl md:text-6xl font-bold text-white mb-4 tracking-tight flex items-center font-mono">
+                        <span class="text-zinc-500 mr-2">~/</span>Informatique<span class="cursor-blink"></span>
+                    </h1>
+                    <p class="text-zinc-400 text-lg max-w-2xl font-light">
+                        Visualisez l'exécution des algorithmes en temps réel pour mieux comprendre leur complexité et leur fonctionnement en mémoire.
+                    </p>
+                </div>
                 
-                <!-- 1. Arbre Rouge-Noir -->
-                <a href="arbre_rouge_noir.html" class="block group card-animate" style="animation-delay: 0.1s;">
-                    <div class="bg-slate-900 border border-slate-700 p-6 rounded-2xl h-full transition-all duration-300 glow-red-hover hover:-translate-y-1 hover:border-red-500/50 relative overflow-hidden flex flex-col">
-                        <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-red-500/20 to-transparent rounded-bl-full pointer-events-none"></div>
-                        
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="w-12 h-12 bg-black border border-slate-800 text-red-500 rounded-xl flex items-center justify-center shadow-lg group-hover:bg-red-950 transition-colors duration-300 z-10">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path></svg>
-                            </div>
-                            <span class="text-xs font-mono text-slate-500 bg-slate-950 px-2 py-1 rounded border border-slate-800">O(log n)</span>
-                        </div>
-                        
-                        <h3 class="text-xl font-bold text-white mb-2 z-10 flex items-center">
-                            <span class="text-red-500 mr-2">●</span> Arbre Rouge-Noir
-                        </h3>
-                        <p class="text-slate-400 text-sm mb-6 flex-grow z-10">
-                            Insertion étape par étape : visualisez le parcours, le recoloriage et les rotations (gauche/droite) pour maintenir l'équilibre parfait.
-                        </p>
-                        
-                        <div class="font-mono text-xs text-red-400 group-hover:text-red-300 transition-colors mt-auto z-10 flex items-center">
-                            > ./run_animation_
-                        </div>
+                <!-- Search Bar Moderne -->
+                <div class="w-full lg:w-96 relative group">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <i data-lucide="search" class="w-4 h-4 text-zinc-500 group-focus-within:text-ide-accentLight transition-colors"></i>
                     </div>
-                </a>
-
-                <!-- 2. Tri par Insertion -->
-                <a href="tri_insertion.html" class="block group card-animate" style="animation-delay: 0.2s;">
-                    <div class="bg-slate-900 border border-slate-700 p-6 rounded-2xl h-full transition-all duration-300 glow-emerald-hover hover:-translate-y-1 hover:border-emerald-500/50 relative overflow-hidden flex flex-col">
-                        <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-emerald-500/20 to-transparent rounded-bl-full pointer-events-none"></div>
-                        
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="w-12 h-12 bg-black border border-slate-800 text-emerald-500 rounded-xl flex items-center justify-center shadow-lg group-hover:bg-emerald-950 transition-colors duration-300 z-10">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h10M4 18h4"></path></svg>
-                            </div>
-                            <span class="text-xs font-mono text-slate-500 bg-slate-950 px-2 py-1 rounded border border-slate-800">O(n²)</span>
-                        </div>
-                        
-                        <h3 class="text-xl font-bold text-white mb-2 z-10 flex items-center">
-                            <span class="text-emerald-500 mr-2">█</span> Tri par Insertion
-                        </h3>
-                        <p class="text-slate-400 text-sm mb-6 flex-grow z-10">
-                            L'algorithme classique où l'on extrait une carte pour l'insérer à sa juste place parmi les éléments déjà triés.
-                        </p>
-                        
-                        <div class="font-mono text-xs text-emerald-400 group-hover:text-emerald-300 transition-colors mt-auto z-10 flex items-center">
-                            > ./run_animation_
-                        </div>
-                    </div>
-                </a>
-
-                <!-- 3. Tri Fusion -->
-                <a href="tri_fusion.html" class="block group card-animate" style="animation-delay: 0.3s;">
-                    <div class="bg-slate-900 border border-slate-700 p-6 rounded-2xl h-full transition-all duration-300 glow-purple-hover hover:-translate-y-1 hover:border-purple-500/50 relative overflow-hidden flex flex-col">
-                        <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-purple-500/20 to-transparent rounded-bl-full pointer-events-none"></div>
-                        
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="w-12 h-12 bg-black border border-slate-800 text-purple-500 rounded-xl flex items-center justify-center shadow-lg group-hover:bg-purple-950 transition-colors duration-300 z-10">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v4M8 11l4 4M16 7v4M16 11l-4 4"></path></svg>
-                            </div>
-                            <span class="text-xs font-mono text-slate-500 bg-slate-950 px-2 py-1 rounded border border-slate-800">O(n log n)</span>
-                        </div>
-                        
-                        <h3 class="text-xl font-bold text-white mb-2 z-10 flex items-center">
-                            <span class="text-purple-500 mr-2">⋈</span> Tri Fusion
-                        </h3>
-                        <p class="text-slate-400 text-sm mb-6 flex-grow z-10">
-                            Diviser pour régner ! Observez la formation de l'arbre de récursion et la fusion des sous-tableaux étage par étage.
-                        </p>
-                        
-                        <div class="font-mono text-xs text-purple-400 group-hover:text-purple-300 transition-colors mt-auto z-10 flex items-center">
-                            > ./run_animation_
-                        </div>
-                    </div>
-                </a>
-
-                <!-- 4. Tri à Bulles -->
-                <a href="tri_bulles.html" class="block group card-animate" style="animation-delay: 0.4s;">
-                    <div class="bg-slate-900 border border-slate-700 p-6 rounded-2xl h-full transition-all duration-300 glow-amber-hover hover:-translate-y-1 hover:border-amber-500/50 relative overflow-hidden flex flex-col">
-                        <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-amber-500/20 to-transparent rounded-bl-full pointer-events-none"></div>
-                        
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="w-12 h-12 bg-black border border-slate-800 text-amber-500 rounded-xl flex items-center justify-center shadow-lg group-hover:bg-amber-950 transition-colors duration-300 z-10">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path></svg>
-                            </div>
-                            <span class="text-xs font-mono text-slate-500 bg-slate-950 px-2 py-1 rounded border border-slate-800">O(n²)</span>
-                        </div>
-                        
-                        <h3 class="text-xl font-bold text-white mb-2 z-10 flex items-center">
-                            <span class="text-amber-500 mr-2">○</span> Tri à Bulles
-                        </h3>
-                        <p class="text-slate-400 text-sm mb-6 flex-grow z-10">
-                            Parcours de droite à gauche avec échanges horizontaux. Les éléments les plus légers remontent à la surface un par un.
-                        </p>
-                        
-                        <div class="font-mono text-xs text-amber-400 group-hover:text-amber-300 transition-colors mt-auto z-10 flex items-center">
-                            > ./run_animation_
-                        </div>
-                    </div>
-                </a>
-
-                <!-- 5. Tri par Tas Min -->
-                <a href="tri_tas.html" class="block group card-animate" style="animation-delay: 0.5s;">
-                    <div class="bg-slate-900 border border-slate-700 p-6 rounded-2xl h-full transition-all duration-300 glow-sky-hover hover:-translate-y-1 hover:border-sky-500/50 relative overflow-hidden flex flex-col">
-                        <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-sky-500/20 to-transparent rounded-bl-full pointer-events-none"></div>
-                        
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="w-12 h-12 bg-black border border-slate-800 text-sky-500 rounded-xl flex items-center justify-center shadow-lg group-hover:bg-sky-950 transition-colors duration-300 z-10">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3L4 15h16L12 3z"></path></svg>
-                            </div>
-                            <span class="text-xs font-mono text-slate-500 bg-slate-950 px-2 py-1 rounded border border-slate-800">O(n log n)</span>
-                        </div>
-                        
-                        <h3 class="text-xl font-bold text-white mb-2 z-10 flex items-center">
-                            <span class="text-sky-500 mr-2">▲</span> Tri par Tas Min
-                        </h3>
-                        <p class="text-slate-400 text-sm mb-6 flex-grow z-10">
-                            Extraction du minimum et tamisage. Animation synchronisée montrant l'arbre binaire virtuel et la mémoire contiguë.
-                        </p>
-                        
-                        <div class="font-mono text-xs text-sky-400 group-hover:text-sky-300 transition-colors mt-auto z-10 flex items-center">
-                            > ./run_animation_
-                        </div>
-                    </div>
-                </a>
-                
-                <!-- 6. Dijkstra -->
-                <a href="dijkstra.html" class="block group card-animate" style="animation-delay: 0.6s;">
-                    <div class="bg-slate-900 border border-slate-700 p-6 rounded-2xl h-full transition-all duration-300 glow-blue-hover hover:-translate-y-1 hover:border-blue-500/50 relative overflow-hidden flex flex-col">
-                        <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-blue-500/20 to-transparent rounded-bl-full pointer-events-none"></div>
-                        
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="w-12 h-12 bg-black border border-slate-800 text-blue-500 rounded-xl flex items-center justify-center shadow-lg group-hover:bg-blue-950 transition-colors duration-300 z-10">
-                                <!-- Icône représentant un graphe / des nœuds connectés -->
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
-                            </div>
-                            <span class="text-xs font-mono text-slate-500 bg-slate-950 px-2 py-1 rounded border border-slate-800">O((A + S) log S)</span>
-                        </div>
-                        
-                        <h3 class="text-xl font-bold text-white mb-2 z-10 flex items-center">
-                            <span class="text-blue-500 mr-2">◈</span> Dijkstra
-                        </h3>
-                        <p class="text-slate-400 text-sm mb-6 flex-grow z-10">
-                            Recherche du chemin le plus court dans un graphe pondéré. Visualisez l'exploration des nœuds et la relaxation des arêtes.
-                        </p>
-                        
-                        <div class="font-mono text-xs text-blue-400 group-hover:text-blue-300 transition-colors mt-auto z-10 flex items-center">
-                            > ./run_animation_
-                        </div>
-                    </div>
-                </a>
-
+                    <input type="text" id="search-input" placeholder="Rechercher_Algorithme()" 
+                           class="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl focus:ring-1 focus:ring-ide-accent focus:border-ide-accent block pl-11 p-3 transition-all placeholder-zinc-500 outline-none font-mono">
+                </div>
             </div>
+        </div>
+    </header>
 
-        </main>
+    <!-- Main Content -->
+    <main class="flex-grow max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-24 w-full relative z-10">
+        
+        <div class="mb-8 flex items-center space-x-2 text-zinc-300 font-mono text-sm">
+            <i data-lucide="folder-tree" class="w-4 h-4 text-ide-accent"></i>
+            <span>src/algorithmes/</span>
+        </div>
 
-        <!-- Pied de page -->
-        <footer class="mt-auto py-6 border-t border-slate-800 bg-slate-950/80 backdrop-blur-sm relative z-10 text-center">
-            <p class="text-slate-500 font-mono text-sm">
-                <span class="text-emerald-600">printf</span>(<span class="text-orange-400">"Créé pour la MP2I\\n"</span>);
-            </p>
-        </footer>
-    </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6" id="gallery">
+            
+            <!-- Arbre Rouge-Noir -->
+            <a href="arbre_rouge_noir.html" class="code-card rounded-2xl p-6 flex flex-col group search-target">
+                <!-- Top Bar "IDE Tab" -->
+                <div class="flex justify-between items-center mb-5 pb-4 border-b border-white/5">
+                    <div class="flex items-center space-x-2 font-mono text-xs text-zinc-500">
+                        <i data-lucide="file-code-2" class="w-4 h-4 text-zinc-400"></i>
+                        <span>arbre_rn.c</span>
+                    </div>
+                    <span class="font-mono text-xs text-ide-accentLight bg-ide-accent/10 border border-ide-accent/20 px-2.5 py-1 rounded-full">O(log n)</span>
+                </div>
+                
+                <h3 class="text-xl font-semibold text-white mb-3 group-hover:text-ide-accentLight transition-colors font-mono">Arbre Rouge-Noir</h3>
+                <p class="text-sm mb-6 flex-grow text-zinc-400 leading-relaxed">
+                    Insertion étape par étape : visualisez le parcours, le recoloriage et les rotations (gauche/droite) pour maintenir l'équilibre parfait.
+                </p>
+                
+                <div class="font-mono text-xs text-zinc-500 flex items-center group-hover:text-white transition-colors">
+                    <span class="text-ide-keyword mr-2">></span> ./run_animation_ <i data-lucide="play" class="w-3 h-3 ml-2 text-ide-string opacity-0 group-hover:opacity-100 transform -translate-x-2 group-hover:translate-x-0 transition-all"></i>
+                </div>
+            </a>
 
-    <!-- SCRIPT GÉRANT LE FOND ANIMÉ (Réseau de Noeuds / Graphe) -->
+            <!-- Tri par Insertion -->
+            <a href="tri_insertion.html" class="code-card rounded-2xl p-6 flex flex-col group search-target">
+                <div class="flex justify-between items-center mb-5 pb-4 border-b border-white/5">
+                    <div class="flex items-center space-x-2 font-mono text-xs text-zinc-500">
+                        <i data-lucide="file-code-2" class="w-4 h-4 text-zinc-400"></i>
+                        <span>tri_insertion.ml</span>
+                    </div>
+                    <span class="font-mono text-xs text-ide-accentLight bg-ide-accent/10 border border-ide-accent/20 px-2.5 py-1 rounded-full">O(n²)</span>
+                </div>
+                
+                <h3 class="text-xl font-semibold text-white mb-3 group-hover:text-ide-accentLight transition-colors font-mono">Tri par Insertion</h3>
+                <p class="text-sm mb-6 flex-grow text-zinc-400 leading-relaxed">
+                    L'algorithme classique où l'on extrait une carte pour l'insérer à sa juste place parmi les éléments déjà triés.
+                </p>
+                
+                <div class="font-mono text-xs text-zinc-500 flex items-center group-hover:text-white transition-colors">
+                    <span class="text-ide-keyword mr-2">></span> ./run_animation_ <i data-lucide="play" class="w-3 h-3 ml-2 text-ide-string opacity-0 group-hover:opacity-100 transform -translate-x-2 group-hover:translate-x-0 transition-all"></i>
+                </div>
+            </a>
+
+            <!-- Tri Fusion -->
+            <a href="tri_fusion.html" class="code-card rounded-2xl p-6 flex flex-col group search-target">
+                <div class="flex justify-between items-center mb-5 pb-4 border-b border-white/5">
+                    <div class="flex items-center space-x-2 font-mono text-xs text-zinc-500">
+                        <i data-lucide="file-code-2" class="w-4 h-4 text-zinc-400"></i>
+                        <span>tri_fusion.c</span>
+                    </div>
+                    <span class="font-mono text-xs text-ide-accentLight bg-ide-accent/10 border border-ide-accent/20 px-2.5 py-1 rounded-full">O(n log n)</span>
+                </div>
+                
+                <h3 class="text-xl font-semibold text-white mb-3 group-hover:text-ide-accentLight transition-colors font-mono">Tri Fusion</h3>
+                <p class="text-sm mb-6 flex-grow text-zinc-400 leading-relaxed">
+                    Diviser pour régner ! Observez la formation de l'arbre de récursion et la fusion des sous-tableaux étage par étage.
+                </p>
+                
+                <div class="font-mono text-xs text-zinc-500 flex items-center group-hover:text-white transition-colors">
+                    <span class="text-ide-keyword mr-2">></span> ./run_animation_ <i data-lucide="play" class="w-3 h-3 ml-2 text-ide-string opacity-0 group-hover:opacity-100 transform -translate-x-2 group-hover:translate-x-0 transition-all"></i>
+                </div>
+            </a>
+
+            <!-- Tri à Bulles -->
+            <a href="tri_bulles.html" class="code-card rounded-2xl p-6 flex flex-col group search-target">
+                <div class="flex justify-between items-center mb-5 pb-4 border-b border-white/5">
+                    <div class="flex items-center space-x-2 font-mono text-xs text-zinc-500">
+                        <i data-lucide="file-code-2" class="w-4 h-4 text-zinc-400"></i>
+                        <span>tri_bulles.c</span>
+                    </div>
+                    <span class="font-mono text-xs text-ide-accentLight bg-ide-accent/10 border border-ide-accent/20 px-2.5 py-1 rounded-full">O(n²)</span>
+                </div>
+                
+                <h3 class="text-xl font-semibold text-white mb-3 group-hover:text-ide-accentLight transition-colors font-mono">Tri à Bulles</h3>
+                <p class="text-sm mb-6 flex-grow text-zinc-400 leading-relaxed">
+                    Parcours de droite à gauche avec échanges horizontaux. Les éléments les plus légers remontent à la surface un par un.
+                </p>
+                
+                <div class="font-mono text-xs text-zinc-500 flex items-center group-hover:text-white transition-colors">
+                    <span class="text-ide-keyword mr-2">></span> ./run_animation_ <i data-lucide="play" class="w-3 h-3 ml-2 text-ide-string opacity-0 group-hover:opacity-100 transform -translate-x-2 group-hover:translate-x-0 transition-all"></i>
+                </div>
+            </a>
+
+            <!-- Tri par Tas Min -->
+            <a href="tri_tas.html" class="code-card rounded-2xl p-6 flex flex-col group search-target">
+                <div class="flex justify-between items-center mb-5 pb-4 border-b border-white/5">
+                    <div class="flex items-center space-x-2 font-mono text-xs text-zinc-500">
+                        <i data-lucide="file-code-2" class="w-4 h-4 text-zinc-400"></i>
+                        <span>tri_tas.c</span>
+                    </div>
+                    <span class="font-mono text-xs text-ide-accentLight bg-ide-accent/10 border border-ide-accent/20 px-2.5 py-1 rounded-full">O(n log n)</span>
+                </div>
+                
+                <h3 class="text-xl font-semibold text-white mb-3 group-hover:text-ide-accentLight transition-colors font-mono">Tri par Tas Min</h3>
+                <p class="text-sm mb-6 flex-grow text-zinc-400 leading-relaxed">
+                    Extraction du minimum et tamisage. Animation synchronisée montrant l'arbre binaire virtuel et la mémoire contiguë.
+                </p>
+                
+                <div class="font-mono text-xs text-zinc-500 flex items-center group-hover:text-white transition-colors">
+                    <span class="text-ide-keyword mr-2">></span> ./run_animation_ <i data-lucide="play" class="w-3 h-3 ml-2 text-ide-string opacity-0 group-hover:opacity-100 transform -translate-x-2 group-hover:translate-x-0 transition-all"></i>
+                </div>
+            </a>
+
+            <!-- Dijkstra -->
+            <a href="dijkstra.html" class="code-card rounded-2xl p-6 flex flex-col group search-target">
+                <div class="flex justify-between items-center mb-5 pb-4 border-b border-white/5">
+                    <div class="flex items-center space-x-2 font-mono text-xs text-zinc-500">
+                        <i data-lucide="file-code-2" class="w-4 h-4 text-zinc-400"></i>
+                        <span>dijkstra.ml</span>
+                    </div>
+                    <span class="font-mono text-xs text-ide-accentLight bg-ide-accent/10 border border-ide-accent/20 px-2.5 py-1 rounded-full">O((A+S)log S)</span>
+                </div>
+                
+                <h3 class="text-xl font-semibold text-white mb-3 group-hover:text-ide-accentLight transition-colors font-mono">Dijkstra</h3>
+                <p class="text-sm mb-6 flex-grow text-zinc-400 leading-relaxed">
+                    Recherche du chemin le plus court dans un graphe pondéré. Visualisez l'exploration des nœuds et la relaxation des arêtes.
+                </p>
+                
+                <div class="font-mono text-xs text-zinc-500 flex items-center group-hover:text-white transition-colors">
+                    <span class="text-ide-keyword mr-2">></span> ./run_animation_ <i data-lucide="play" class="w-3 h-3 ml-2 text-ide-string opacity-0 group-hover:opacity-100 transform -translate-x-2 group-hover:translate-x-0 transition-all"></i>
+                </div>
+            </a>
+
+            <!-- FLOYD-WARSHALL (Actif) -->
+            <a href="floyd_warshall.html" class="code-card rounded-2xl p-6 flex flex-col group search-target">
+                <div class="flex justify-between items-center mb-5 pb-4 border-b border-white/5">
+                    <div class="flex items-center space-x-2 font-mono text-xs text-zinc-500">
+                        <i data-lucide="file-code-2" class="w-4 h-4 text-zinc-400"></i>
+                        <span>floyd_warshall.c</span>
+                    </div>
+                    <span class="font-mono text-xs text-ide-accentLight bg-ide-accent/10 border border-ide-accent/20 px-2.5 py-1 rounded-full">O(S³)</span>
+                </div>
+                
+                <h3 class="text-xl font-semibold text-white mb-3 group-hover:text-ide-accentLight transition-colors font-mono">Floyd-Warshall</h3>
+                <p class="text-sm mb-6 flex-grow text-zinc-400 leading-relaxed">
+                    Calcul des plus courts chemins entre toutes les paires de sommets. Visualisez la mise à jour de la matrice d'adjacence étape par étape.
+                </p>
+                
+                <div class="font-mono text-xs text-zinc-500 flex items-center group-hover:text-white transition-colors">
+                    <span class="text-ide-keyword mr-2">></span> ./run_animation_ <i data-lucide="play" class="w-3 h-3 ml-2 text-ide-string opacity-0 group-hover:opacity-100 transform -translate-x-2 group-hover:translate-x-0 transition-all"></i>
+                </div>
+            </a>
+
+        </div>
+
+        <!-- Message si aucun résultat -->
+        <div id="no-results" class="hidden text-center py-16 mt-6 rounded-2xl border border-white/5 bg-white/5 backdrop-blur-sm">
+            <div class="inline-flex p-3 rounded-full bg-ide-accent/10 text-ide-accentLight mb-4">
+                <i data-lucide="terminal-square" class="w-6 h-6"></i>
+            </div>
+            <div class="font-mono text-zinc-300 mb-2">Exception: NotFoundError</div>
+            <p class="text-sm text-zinc-500">Aucun algorithme ne correspond aux critères de recherche.</p>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-white/5 bg-black/50 backdrop-blur-lg py-6 mt-auto relative z-10">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center text-xs text-zinc-500 font-mono">
+            <div class="flex items-center space-x-2 mb-4 md:mb-0">
+                <i data-lucide="code" class="w-4 h-4"></i>
+                <span>printf("Créé pour la MP2I\n");</span>
+            </div>
+            <div class="flex space-x-6">
+                <span class="flex items-center"><span class="w-2 h-2 rounded-full bg-ide-string mr-2"></span>Système en ligne</span>
+                <span>UTF-8</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
     <script>
-        const canvas = document.getElementById('network-bg');
-        const ctx = canvas.getContext('2d');
-        
-        let width, height;
-        let nodes = [];
-        
-        function resize() {
-            width = window.innerWidth;
-            height = window.innerHeight;
-            canvas.width = width;
-            canvas.height = height;
-        }
+        lucide.createIcons();
 
-        class Node {
-            constructor() {
-                this.x = Math.random() * width;
-                this.y = Math.random() * height;
-                this.vx = (Math.random() - 0.5) * 0.5;
-                this.vy = (Math.random() - 0.5) * 0.5;
-                this.radius = Math.random() * 2 + 1.5;
-                // Couleurs inspirées du terminal (vert émeraude, cyan sombre)
-                this.color = Math.random() > 0.8 ? '#10b981' : '#334155'; 
-            }
+        // Système de recherche
+        const searchInput = document.getElementById('search-input');
+        const cards = document.querySelectorAll('.code-card');
+        const noResults = document.getElementById('no-results');
 
-            update() {
-                this.x += this.vx;
-                this.y += this.vy;
+        searchInput.addEventListener('input', (e) => {
+            const currentSearch = e.target.value.toLowerCase();
+            let visibleCount = 0;
 
-                // Rebondissement doux
-                if (this.x < 0 || this.x > width) this.vx *= -1;
-                if (this.y < 0 || this.y > height) this.vy *= -1;
-            }
+            cards.forEach(card => {
+                const text = card.textContent.toLowerCase();
 
-            draw() {
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = this.color;
-                ctx.fill();
-                
-                // Petit effet de lueur sur les noeuds verts
-                if (this.color === '#10b981') {
-                    ctx.shadowBlur = 10;
-                    ctx.shadowColor = '#10b981';
-                    ctx.fill();
-                    ctx.shadowBlur = 0; // Reset
+                if (text.includes(currentSearch)) {
+                    card.style.display = 'flex';
+                    // Petit effet pour montrer que ça a filtré
+                    card.style.animation = 'fadeIn 0.3s ease-out';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
                 }
-            }
-        }
-
-        function initNodes() {
-            nodes = [];
-            // Densité adaptée
-            const numNodes = Math.floor((width * height) / 15000); 
-            for (let i = 0; i < numNodes; i++) {
-                nodes.push(new Node());
-            }
-        }
-
-        function animate() {
-            ctx.clearRect(0, 0, width, height);
-            
-            nodes.forEach(node => {
-                node.update();
             });
 
-            // Dessiner les arêtes du graphe
-            ctx.lineWidth = 1;
-            for (let i = 0; i < nodes.length; i++) {
-                for (let j = i + 1; j < nodes.length; j++) {
-                    const dx = nodes[i].x - nodes[j].x;
-                    const dy = nodes[i].y - nodes[j].y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-
-                    if (distance < 120) {
-                        const opacity = 1 - (distance / 120);
-                        // Arêtes vert sombre/cyan
-                        ctx.strokeStyle = `rgba(16, 185, 129, ${opacity * 0.3})`;
-                        ctx.beginPath();
-                        ctx.moveTo(nodes[i].x, nodes[i].y);
-                        ctx.lineTo(nodes[j].x, nodes[j].y);
-                        ctx.stroke();
-                    }
-                }
+            if (visibleCount === 0) {
+                noResults.classList.remove('hidden');
+            } else {
+                noResults.classList.add('hidden');
             }
-            
-            // Dessiner les noeuds par-dessus les arêtes
-            nodes.forEach(node => node.draw());
-
-            requestAnimationFrame(animate);
-        }
-
-        window.addEventListener('resize', () => {
-            resize();
-            initNodes();
         });
-
-        // Démarrage
-        resize();
-        initNodes();
-        animate();
     </script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
 </body>
 </html>
