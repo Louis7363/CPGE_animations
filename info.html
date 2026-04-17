@@ -43,6 +43,7 @@
         .glow-purple-hover:hover { box-shadow: 0 0 20px rgba(168, 85, 247, 0.2); }
         .glow-amber-hover:hover { box-shadow: 0 0 20px rgba(245, 158, 11, 0.2); }
         .glow-sky-hover:hover { box-shadow: 0 0 20px rgba(14, 165, 233, 0.2); }
+        .glow-blue-hover:hover { box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); }
         
         /* Style du fond réseau */
         #network-bg {
@@ -216,32 +217,33 @@
                         </div>
                     </div>
                 </a>
-
-                <a href="dijkstra.html" class="block group card-animate" style="animation-delay: 0.5s;">
-                    <div class="bg-slate-900 border border-slate-700 p-6 rounded-2xl h-full transition-all duration-300 glow-sky-hover hover:-translate-y-1 hover:border-sky-500/50 relative overflow-hidden flex flex-col">
-                        <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-sky-500/20 to-transparent rounded-bl-full pointer-events-none"></div>
+                
+                <!-- 6. Dijkstra -->
+                <a href="dijkstra_simulator.html" class="block group card-animate" style="animation-delay: 0.6s;">
+                    <div class="bg-slate-900 border border-slate-700 p-6 rounded-2xl h-full transition-all duration-300 glow-blue-hover hover:-translate-y-1 hover:border-blue-500/50 relative overflow-hidden flex flex-col">
+                        <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-blue-500/20 to-transparent rounded-bl-full pointer-events-none"></div>
                         
                         <div class="flex items-center justify-between mb-4">
-                            <div class="w-12 h-12 bg-black border border-slate-800 text-sky-500 rounded-xl flex items-center justify-center shadow-lg group-hover:bg-sky-950 transition-colors duration-300 z-10">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3L4 15h16L12 3z"></path></svg>
+                            <div class="w-12 h-12 bg-black border border-slate-800 text-blue-500 rounded-xl flex items-center justify-center shadow-lg group-hover:bg-blue-950 transition-colors duration-300 z-10">
+                                <!-- Icône représentant un graphe / des nœuds connectés -->
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
                             </div>
-                            <span class="text-xs font-mono text-slate-500 bg-slate-950 px-2 py-1 rounded border border-slate-800">O(n log n)</span>
+                            <span class="text-xs font-mono text-slate-500 bg-slate-950 px-2 py-1 rounded border border-slate-800">O(A + S log S)</span>
                         </div>
                         
                         <h3 class="text-xl font-bold text-white mb-2 z-10 flex items-center">
-                            <span class="text-sky-500 mr-2">▲</span> Dijkstra
+                            <span class="text-blue-500 mr-2">◈</span> Dijkstra
                         </h3>
                         <p class="text-slate-400 text-sm mb-6 flex-grow z-10">
-                            Animation de l'algorithme de Disjkstra
+                            Recherche du chemin le plus court dans un graphe pondéré. Visualisez l'exploration des nœuds et la relaxation des arêtes.
                         </p>
                         
-                        <div class="font-mono text-xs text-sky-400 group-hover:text-sky-300 transition-colors mt-auto z-10 flex items-center">
+                        <div class="font-mono text-xs text-blue-400 group-hover:text-blue-300 transition-colors mt-auto z-10 flex items-center">
                             > ./run_animation_
                         </div>
                     </div>
                 </a>
 
-               
             </div>
 
         </main>
