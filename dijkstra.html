@@ -1,444 +1,533 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulateur Algorithme de Dijkstra</title>
-    <!-- Tailwind CSS pour un style moderne et épuré -->
+    <title>Dijkstra - Informatique MP2I</title>
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- D3.js pour le rendu du graphe -->
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <style>
-        /* Styles spécifiques pour les transitions SVG */
-        .node circle {
-            transition: fill 0.3s, stroke 0.3s, stroke-width 0.3s;
-        }
-        .link {
-            transition: stroke 0.3s, stroke-width 0.3s;
-        }
-        .distance-label {
-            font-weight: bold;
-            text-shadow: 1px 1px 2px #1e293b, -1px -1px 2px #1e293b, 1px -1px 2px #1e293b, -1px 1px 2px #1e293b;
-            transition: fill 0.3s;
-        }
-    </style>
-</head>
-<body class="bg-slate-900 text-slate-200 font-sans min-h-screen p-4 md:p-8">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    <div class="max-w-6xl mx-auto space-y-6">
-        
-        <!-- Bouton Retour -->
-        <a href="https://louis7363.github.io/CPGE_animations/info.html" class="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-            Retour aux animations
-        </a>
-
-        <!-- En-tête -->
-        <header class="bg-slate-800 p-6 rounded-xl shadow-md border border-slate-700">
-            <h1 class="text-3xl font-bold text-white mb-2">L'Algorithme de Dijkstra</h1>
-            <p class="text-slate-400">
-                Découvrez pas à pas comment l'algorithme trouve le chemin le plus court. À chaque étape, il sélectionne le nœud non visité ayant la distance la plus faible, puis met à jour les distances de ses voisins.
-            </p>
-        </header>
-
-        <!-- Contrôles -->
-        <div class="bg-slate-800 p-4 rounded-xl shadow-md border border-slate-700 flex flex-wrap items-center gap-4">
-            <div class="flex items-center gap-2">
-                <label for="startNode" class="font-semibold text-sm text-slate-300">Nœud de départ :</label>
-                <select id="startNode" class="border border-slate-600 rounded p-1.5 bg-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                    <option value="C">C</option>
-                    <option value="D">D</option>
-                    <option value="E">E</option>
-                    <option value="F">F</option>
-                </select>
-            </div>
-            
-            <button id="btnReset" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded transition-colors text-sm">
-                Réinitialiser
-            </button>
-
-            <button id="btnNext" class="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded shadow transition-colors flex items-center gap-2 text-sm ml-auto">
-                Étape Suivante
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-            </button>
-        </div>
-
-        <!-- Zone d'explication de l'étape courante -->
-        <div id="step-explanation" class="bg-blue-900/40 border-l-4 border-blue-500 p-4 rounded shadow-sm text-blue-200 font-medium min-h-[4rem] flex items-center">
-            Cliquez sur "Étape Suivante" pour démarrer l'algorithme.
-        </div>
-
-        <div class="flex flex-col lg:flex-row gap-6">
-            
-            <!-- Graphe D3 -->
-            <div class="flex-1 bg-slate-800 p-4 rounded-xl shadow-md border border-slate-700 overflow-hidden flex justify-center items-center">
-                <svg id="graph-svg" width="600" height="400" viewBox="0 0 600 400" class="max-w-full h-auto"></svg>
-            </div>
-
-            <!-- Tableau d'état -->
-            <div class="w-full lg:w-1/3 bg-slate-800 rounded-xl shadow-md border border-slate-700 overflow-hidden flex flex-col">
-                <div class="p-4 border-b border-slate-700 bg-slate-900/50">
-                    <h2 class="font-bold text-slate-200">Distances & Prédécesseurs</h2>
-                </div>
-                <div class="overflow-x-auto p-4">
-                    <table class="w-full text-left text-sm border-collapse">
-                        <thead>
-                            <tr class="text-slate-400 border-b-2 border-slate-700">
-                                <th class="pb-2">Nœud</th>
-                                <th class="pb-2">Distance</th>
-                                <th class="pb-2">Précédent</th>
-                            </tr>
-                        </thead>
-                        <tbody id="table-body">
-                            <!-- Les lignes seront générées par JS -->
-                        </tbody>
-                    </table>
-                </div>
-                
-                <!-- Légende -->
-                <div class="p-4 border-t border-slate-700 text-xs text-slate-400 space-y-2 mt-auto">
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full border border-slate-500 bg-slate-800 inline-block"></span> Non visité</div>
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full border-2 border-orange-500 bg-orange-900/50 inline-block"></span> Nœud en cours de traitement</div>
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full border border-green-500 bg-green-900/50 inline-block"></span> Nœud visité (distance finale)</div>
-                </div>
-            </div>
-        </div>
-
-    </div>
+    <!-- KaTeX pour les formules mathématiques -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
 
     <script>
-        // === 1. DÉFINITION DU GRAPHE ===
-        // Pour la pédagogie, on utilise des positions fixes pour éviter que ça bouge
-        const nodesData = [
-            { id: 'A', x: 100, y: 200 },
-            { id: 'B', x: 250, y: 80 },
-            { id: 'C', x: 250, y: 320 },
-            { id: 'D', x: 420, y: 80 },
-            { id: 'E', x: 420, y: 320 },
-            { id: 'F', x: 550, y: 200 }
-        ];
-
-        // Arêtes non orientées avec poids
-        const linksData = [
-            { source: 'A', target: 'B', weight: 4 },
-            { source: 'A', target: 'C', weight: 2 },
-            { source: 'B', target: 'C', weight: 1 },
-            { source: 'B', target: 'D', weight: 5 },
-            { source: 'C', target: 'D', weight: 8 },
-            { source: 'C', target: 'E', weight: 10 },
-            { source: 'D', target: 'E', weight: 2 },
-            { source: 'D', target: 'F', weight: 6 },
-            { source: 'E', target: 'F', weight: 3 }
-        ];
-
-        // === 2. VARIABLES D'ÉTAT GLOBALES ===
-        let steps = [];
-        let currentStepIndex = 0;
-
-        // === 3. LOGIQUE ALGORITHMIQUE (Calcul préalable des étapes) ===
-        // On génère la liste de toutes les "actions" pour les afficher une par une.
-        function generateDijkstraSteps(startNodeId) {
-            const adj = {};
-            nodesData.forEach(n => adj[n.id] = []);
-            linksData.forEach(l => {
-                adj[l.source].push({ to: l.target, weight: l.weight });
-                adj[l.target].push({ to: l.source, weight: l.weight });
-            });
-
-            let dist = {};
-            let prev = {};
-            let unvisited = new Set();
-            let visited = new Set();
-
-            nodesData.forEach(n => {
-                dist[n.id] = Infinity;
-                prev[n.id] = null;
-                unvisited.add(n.id);
-            });
-
-            dist[startNodeId] = 0;
-            
-            let simulationSteps = [];
-
-            // Étape initiale
-            simulationSteps.push({
-                type: 'INIT',
-                message: `Initialisation : La distance de ${startNodeId} est mise à 0. Les autres sont à l'infini (∞).`,
-                dist: { ...dist }, prev: { ...prev }, visited: new Set(visited),
-                activeNode: null, activeEdge: null
-            });
-
-            while (unvisited.size > 0) {
-                // Trouver le nœud non visité avec la distance minimale
-                let u = null;
-                let minDist = Infinity;
-                for (let node of unvisited) {
-                    if (dist[node] < minDist) {
-                        minDist = dist[node];
-                        u = node;
-                    }
-                }
-
-                // Si tous les nœuds restants sont inaccessibles, on arrête
-                if (u === null) break;
-
-                simulationSteps.push({
-                    type: 'SELECT_NODE',
-                    message: `On sélectionne le nœud ${u} car il a la plus petite distance connue (${dist[u]}).`,
-                    dist: { ...dist }, prev: { ...prev }, visited: new Set(visited),
-                    activeNode: u, activeEdge: null
-                });
-
-                unvisited.delete(u);
-
-                // Analyser les voisins
-                for (let neighbor of adj[u]) {
-                    let v = neighbor.to;
-                    let weight = neighbor.weight;
-
-                    if (unvisited.has(v)) {
-                        simulationSteps.push({
-                            type: 'CHECK_EDGE',
-                            message: `On examine le voisin ${v} via l'arête (${u}-${v}) de poids ${weight}.`,
-                            dist: { ...dist }, prev: { ...prev }, visited: new Set(visited),
-                            activeNode: u, activeEdge: { u, v }
-                        });
-
-                        let alt = dist[u] + weight;
-                        if (alt < dist[v]) {
-                            dist[v] = alt;
-                            prev[v] = u;
-                            simulationSteps.push({
-                                type: 'UPDATE_DIST',
-                                message: `Nouveau chemin plus court trouvé ! ${dist[u]} + ${weight} = ${alt}. On met à jour la distance de ${v}.`,
-                                dist: { ...dist }, prev: { ...prev }, visited: new Set(visited),
-                                activeNode: u, activeEdge: { u, v }
-                            });
-                        } else {
-                            simulationSteps.push({
-                                type: 'NO_UPDATE',
-                                message: `Le chemin via ${u} (${alt}) n'est pas meilleur que la distance actuelle de ${v} (${dist[v]}). On ne fait rien.`,
-                                dist: { ...dist }, prev: { ...prev }, visited: new Set(visited),
-                                activeNode: u, activeEdge: { u, v }
-                            });
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    },
+                    colors: {
+                        ide: {
+                            bg: '#000000',
+                            card: '#0a0a0a',
+                            border: '#1f1f22',
+                            text: '#a1a1aa',
+                            accent: '#3b82f6', 
+                            accentLight: '#93c5fd', 
+                            pink: '#ec4899',   
+                            green: '#10b981',  
+                            yellow: '#eab308', 
+                            keyword: '#ec4899',
+                            string: '#10b981',
+                            comment: '#52525b',
+                            func: '#60a5fa'
                         }
                     }
                 }
-
-                visited.add(u);
-                simulationSteps.push({
-                    type: 'NODE_DONE',
-                    message: `Le nœud ${u} est maintenant marqué comme visité. Sa distance minimale est définitivement fixée à ${dist[u]}.`,
-                    dist: { ...dist }, prev: { ...prev }, visited: new Set(visited),
-                    activeNode: null, activeEdge: null
-                });
             }
+        }
+    </script>
+    <style>
+        body { background-color: #000000; color: #a1a1aa; overflow-x: hidden; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #000000; }
+        ::-webkit-scrollbar-thumb { background: #1f1f22; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
 
-            simulationSteps.push({
-                type: 'DONE',
-                message: "L'algorithme est terminé ! Tous les nœuds accessibles ont été visités.",
-                dist: { ...dist }, prev: { ...prev }, visited: new Set(visited),
-                activeNode: null, activeEdge: null
-            });
-
-            return simulationSteps;
+        .glass-panel {
+            background: linear-gradient(180deg, rgba(24,24,27,0.6) 0%, rgba(10,10,10,0.9) 100%);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
-        // === 4. RENDU VISUEL (D3.js & DOM) ===
-        const svg = d3.select("#graph-svg");
+        .array-cell { transition: all 0.3s ease; }
+        .cell-highlight-u { background-color: rgba(59, 130, 246, 0.2); border-color: #3b82f6; color: #93c5fd; }
+        .cell-highlight-v { background-color: rgba(236, 72, 153, 0.2); border-color: #ec4899; color: #f9a8d4; }
+        .cell-visited { background-color: rgba(234, 179, 8, 0.1); border-color: #ca8a04; color: #fde047; }
+        .cell-updated { background-color: rgba(16, 185, 129, 0.3); border-color: #10b981; color: #a7f3d0; transform: scale(1.1); z-index: 10; font-weight: bold; }
         
-        // Dessin des arêtes
-        const linkGroups = svg.selectAll(".linkGroup")
-            .data(linksData)
-            .enter().append("g")
-            .attr("class", "linkGroup");
+        .code-block { tab-size: 4; }
+        
+        .tab-btn.active { background-color: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+    </style>
+</head>
+<body class="font-sans antialiased selection:bg-ide-accent/30 selection:text-white h-screen flex flex-col">
 
-        const linkLines = linkGroups.append("line")
-            .attr("class", "link")
-            .attr("x1", d => nodesData.find(n => n.id === d.source).x)
-            .attr("y1", d => nodesData.find(n => n.id === d.source).y)
-            .attr("x2", d => nodesData.find(n => n.id === d.target).x)
-            .attr("y2", d => nodesData.find(n => n.id === d.target).y)
-            .attr("stroke", "#475569")
-            .attr("stroke-width", 3);
+    <!-- Navigation -->
+    <nav class="border-b border-white/5 bg-black/80 backdrop-blur-xl shrink-0">
+        <div class="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-14">
+                <a href="info.html" class="flex items-center space-x-2 text-zinc-400 hover:text-white transition-colors group">
+                    <i data-lucide="arrow-left" class="w-4 h-4 group-hover:-translate-x-1 transition-transform"></i>
+                    <span class="font-mono text-sm">cd ..</span>
+                </a>
+                <div class="flex items-center space-x-4 font-mono text-xs text-zinc-500">
+                    <span class="flex items-center text-ide-accent"><i data-lucide="cpu" class="w-3 h-3 mr-1 animate-pulse"></i> Logic_Core: active</span>
+                    <span>dijkstra_v2.c</span>
+                </div>
+            </div>
+        </div>
+    </nav>
 
-        const linkTexts = linkGroups.append("text")
-            .attr("x", d => (nodesData.find(n => n.id === d.source).x + nodesData.find(n => n.id === d.target).x) / 2)
-            .attr("y", d => (nodesData.find(n => n.id === d.source).y + nodesData.find(n => n.id === d.target).y) / 2 - 5)
-            .attr("text-anchor", "middle")
-            .attr("class", "font-bold text-sm")
-            .attr("fill", "#94a3b8")
-            .text(d => d.weight);
-
-        // Dessin des nœuds
-        const nodeGroups = svg.selectAll(".node")
-            .data(nodesData)
-            .enter().append("g")
-            .attr("class", "node")
-            .attr("transform", d => `translate(${d.x},${d.y})`);
-
-        const nodeCircles = nodeGroups.append("circle")
-            .attr("r", 20)
-            .attr("fill", "#1e293b")
-            .attr("stroke", "#64748b")
-            .attr("stroke-width", 2);
-
-        nodeGroups.append("text")
-            .attr("text-anchor", "middle")
-            .attr("dy", 5)
-            .attr("class", "font-bold")
-            .attr("fill", "#f8fafc")
-            .text(d => d.id);
-
-        // Étiquettes de distances (à côté des nœuds)
-        const distLabels = nodeGroups.append("text")
-            .attr("class", "distance-label")
-            .attr("x", 25)
-            .attr("y", -15)
-            .attr("fill", "#cbd5e1")
-            .text("∞");
-
-        // Fonction pour formater "Infinity" en "∞"
-        const formatDist = val => val === Infinity ? "∞" : val;
-
-        // Fonction de mise à jour de l'interface en fonction d'une étape
-        function renderStep(step) {
-            // Mettre à jour l'explication
-            const msgBox = document.getElementById('step-explanation');
-            msgBox.innerHTML = step.message;
-            if(step.type === 'DONE') {
-                msgBox.className = "bg-green-900/40 border-l-4 border-green-500 p-4 rounded shadow-sm text-green-200 font-medium min-h-[4rem] flex items-center";
-                document.getElementById('btnNext').disabled = true;
-                document.getElementById('btnNext').classList.add('opacity-50', 'cursor-not-allowed');
-            } else if (step.type === 'UPDATE_DIST') {
-                msgBox.className = "bg-orange-900/40 border-l-4 border-orange-500 p-4 rounded shadow-sm text-orange-200 font-medium min-h-[4rem] flex items-center";
-            } else {
-                msgBox.className = "bg-blue-900/40 border-l-4 border-blue-500 p-4 rounded shadow-sm text-blue-200 font-medium min-h-[4rem] flex items-center";
-                document.getElementById('btnNext').disabled = false;
-                document.getElementById('btnNext').classList.remove('opacity-50', 'cursor-not-allowed');
-            }
-
-            // Mettre à jour les couleurs des nœuds
-            nodeCircles.attr("fill", d => {
-                if (d.id === step.activeNode) return "#7c2d12"; // orange foncé
-                if (step.visited.has(d.id)) return "#14532d"; // vert foncé (fini)
-                return "#1e293b";
-            }).attr("stroke", d => {
-                if (d.id === step.activeNode) return "#f97316"; // orange vif
-                if (step.visited.has(d.id)) return "#22c55e"; // vert clair
-                return "#64748b"; // gris
-            }).attr("stroke-width", d => {
-                if (d.id === step.activeNode) return 4;
-                return 2;
-            });
-
-            // Mettre à jour les étiquettes de distance sur le graphe
-            distLabels
-                .text(d => formatDist(step.dist[d.id]))
-                .attr("fill", d => {
-                    if(step.activeNode === d.id && step.type === 'SELECT_NODE') return "#fb923c"; // orange clair
-                    return "#e2e8f0";
-                });
-
-            // Mettre à jour les arêtes
-            linkLines.attr("stroke", d => {
-                // Arête active en cours de vérification
-                if (step.activeEdge && 
-                   ((d.source === step.activeEdge.u && d.target === step.activeEdge.v) ||
-                    (d.source === step.activeEdge.v && d.target === step.activeEdge.u))) {
-                    return "#f97316"; // orange
-                }
-                // Arête faisant partie du chemin le plus court (prédécesseur validé)
-                if (step.prev[d.target] === d.source || step.prev[d.source] === d.target) {
-                    // On ne colore en vert que si le nœud enfant a été visité, ou si on vient de le mettre à jour
-                    return "#3b82f6"; // bleu chemin final
-                }
-                return "#475569"; // gris foncé par défaut
-            }).attr("stroke-width", d => {
-                if (d.id === step.activeNode) return 4;
-                return 2;
-            });
-
-            // Mettre à jour les étiquettes de distance sur le graphe
-            distLabels
-                .text(d => formatDist(step.dist[d.id]))
-                .attr("fill", d => {
-                    if(step.activeNode === d.id && step.type === 'SELECT_NODE') return "#ea580c";
-                    return "#334155";
-                });
-
-            // Mettre à jour les arêtes
-            linkLines.attr("stroke", d => {
-                // Arête active en cours de vérification
-                if (step.activeEdge && 
-                   ((d.source === step.activeEdge.u && d.target === step.activeEdge.v) ||
-                    (d.source === step.activeEdge.v && d.target === step.activeEdge.u))) {
-                    return "#f97316"; // orange
-                }
-                // Arête faisant partie du chemin le plus court (prédécesseur validé)
-                if (step.prev[d.target] === d.source || step.prev[d.source] === d.target) {
-                    // On ne colore en vert que si le nœud enfant a été visité, ou si on vient de le mettre à jour
-                    return "#3b82f6"; // bleu chemin final
-                }
-                return "#e2e8f0"; // gris clair par défaut
-            }).attr("stroke-width", d => {
-                if (step.activeEdge && 
-                   ((d.source === step.activeEdge.u && d.target === step.activeEdge.v) ||
-                    (d.source === step.activeEdge.v && d.target === step.activeEdge.u))) return 5;
-                if (step.prev[d.target] === d.source || step.prev[d.source] === d.target) return 4;
-                return 2;
-            });
-
-            // Mettre à jour le tableau HTML
-            const tbody = document.getElementById('table-body');
-            tbody.innerHTML = '';
+    <!-- Main Layout -->
+    <main class="flex-grow flex flex-col lg:flex-row overflow-hidden max-w-[1400px] mx-auto w-full">
+        
+        <!-- ==================== LEFT PANEL : COURS ==================== -->
+        <div class="w-full lg:w-5/12 p-4 lg:p-6 lg:overflow-y-auto border-b lg:border-b-0 lg:border-r border-white/5 custom-scrollbar">
             
-            nodesData.forEach(n => {
-                const tr = document.createElement('tr');
-                tr.className = "border-b border-slate-700 last:border-0 transition-colors";
-                
-                // Surligner la ligne si c'est le nœud actif
-                if (n.id === step.activeNode) {
-                    tr.classList.add("bg-orange-900/40");
-                } else if (step.visited.has(n.id)) {
-                    tr.classList.add("bg-green-900/40");
-                }
+            <div class="mb-6 flex items-center space-x-3">
+                <div class="p-2 bg-ide-accent/10 border border-ide-accent/20 rounded-lg text-ide-accentLight">
+                    <i data-lucide="map"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-white tracking-tight">Dijkstra Masterclass</h1>
+                    <p class="text-xs font-mono text-zinc-500">Algorithme glouton & Structures de données</p>
+                </div>
+            </div>
 
-                const d = step.dist[n.id];
-                const p = step.prev[n.id] || "-";
-                
-                tr.innerHTML = `
-                    <td class="py-2 px-1 font-semibold text-slate-200">${n.id}</td>
-                    <td class="py-2 px-1 ${d === Infinity ? 'text-slate-500' : 'text-blue-400 font-bold'}">${formatDist(d)}</td>
-                    <td class="py-2 px-1 text-slate-400 font-mono">${p}</td>
-                `;
-                tbody.appendChild(tr);
-            });
+            <!-- Principe -->
+            <section class="mb-8">
+                <h2 class="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center">
+                    <i data-lucide="lightbulb" class="w-4 h-4 mr-2 text-zinc-400"></i> Le Concept Glouton
+                </h2>
+                <div class="space-y-3 text-sm text-zinc-400 leading-relaxed">
+                    <p>
+                        Dijkstra trouve les plus courts chemins depuis une <strong>source unique</strong> vers tous les autres nœuds. 
+                        Il maintient une distance provisoire pour chaque nœud et "relâche" les arêtes pour minimiser ces distances.
+                    </p>
+                    <div class="my-4 glass-panel rounded-lg p-4 text-white font-mono text-xs border border-white/10">
+                        <span class="text-zinc-500">// Relâchement (u, v)</span><br>
+                        <span class="text-ide-keyword">if</span> (dist[u] + w(u, v) &lt; dist[v]) {<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;dist[v] = dist[u] + w(u, v);<br>
+                        }
+                    </div>
+                </div>
+            </section>
+
+            <!-- Code -->
+            <section class="mb-8">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-sm font-bold text-white uppercase tracking-wider flex items-center">
+                            <i data-lucide="code-2" class="w-4 h-4 mr-2 text-zinc-400"></i> Implémentation
+                        </h2>
+                    </div>
+                    
+                    <!-- Selectors -->
+                    <div class="flex flex-col gap-2">
+                        <div class="flex space-x-2 bg-white/5 p-1 rounded-lg border border-white/10 text-[10px] font-mono uppercase">
+                            <button onclick="setLanguage('c')" id="btn-c" class="tab-btn px-3 py-1 rounded active transition-all">C</button>
+                            <button onclick="setLanguage('ocaml')" id="btn-ocaml" class="tab-btn px-3 py-1 rounded transition-all">OCaml</button>
+                        </div>
+                        <div class="flex space-x-2 bg-white/5 p-1 rounded-lg border border-white/10 text-[10px] font-mono uppercase">
+                            <button onclick="setStrategy('simple')" id="btn-simple" class="tab-btn px-3 py-1 rounded active transition-all">Tableau $O(S^2)$</button>
+                            <button onclick="setStrategy('heap')" id="btn-heap" class="tab-btn px-3 py-1 rounded transition-all">Tas Binaire $O(A \log S)$</button>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel rounded-xl border border-white/5 overflow-hidden">
+                        <div class="flex items-center px-4 py-2 bg-white/5 border-b border-white/5">
+                            <span id="code-filename" class="text-xs font-mono text-zinc-500 italic">dijkstra.c</span>
+                        </div>
+                        
+                        <div class="relative">
+                            <pre id="code-display" class="p-4 text-[11px] font-mono text-zinc-300 overflow-x-auto custom-scrollbar code-block leading-relaxed min-h-[300px]"></pre>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- ==================== RIGHT PANEL : LABORATOIRE ==================== -->
+        <div class="w-full lg:w-7/12 flex flex-col bg-[#050505] relative border-t lg:border-t-0 border-white/5">
+            
+            <!-- Contrôles -->
+            <div class="p-4 border-b border-white/5 flex flex-wrap items-center justify-between gap-4 bg-black/40 z-10">
+                <div class="flex items-center space-x-2">
+                    <button id="btn-play" class="flex items-center justify-center w-10 h-10 rounded-lg bg-ide-accent/20 text-ide-accentLight hover:bg-ide-accent/40 transition-colors border border-ide-accent/30">
+                        <i data-lucide="play" id="icon-play" class="w-5 h-5 ml-0.5"></i>
+                    </button>
+                    <button id="btn-step" class="flex items-center justify-center w-10 h-10 rounded-lg bg-white/5 text-zinc-300 hover:bg-white/10 transition-colors border border-white/10">
+                        <i data-lucide="step-forward" class="w-4 h-4"></i>
+                    </button>
+                    <button id="btn-reset" class="flex items-center justify-center w-10 h-10 rounded-lg bg-white/5 text-zinc-300 hover:bg-white/10 transition-colors border border-white/10">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <div class="flex items-center space-x-3 text-xs font-mono">
+                    <i data-lucide="gauge" class="w-4 h-4 text-zinc-500"></i>
+                    <input type="range" id="speed-slider" min="50" max="1500" value="800" class="w-24 accent-ide-accent" style="direction: rtl;">
+                </div>
+            </div>
+
+            <!-- Animation Area -->
+            <div class="flex-grow flex flex-col p-4 gap-4 overflow-hidden">
+                <div class="flex flex-col h-3/5">
+                    <div class="text-[10px] font-mono text-zinc-500 mb-2 uppercase tracking-widest flex justify-between">
+                        <span>Visualizer_Graph(V, E)</span>
+                        <span class="text-ide-accentLight">Source: Node 0</span>
+                    </div>
+                    <div class="glass-panel rounded-2xl border border-white/5 flex-grow relative overflow-hidden flex items-center justify-center">
+                        <canvas id="graph-canvas" class="absolute inset-0 w-full h-full"></canvas>
+                    </div>
+                </div>
+
+                <div class="flex flex-col h-2/5">
+                    <div class="text-[10px] font-mono text-zinc-500 mb-2 uppercase tracking-widest">Memory_Registry</div>
+                    <div class="glass-panel rounded-2xl border border-white/5 flex-grow p-4 overflow-x-auto flex flex-col justify-center gap-3">
+                        <div class="flex items-center">
+                            <div class="w-16 text-[10px] font-mono text-zinc-500 text-right pr-4">Nœud</div>
+                            <div class="flex gap-2" id="row-nodes"></div>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="w-16 text-[10px] font-mono text-ide-accentLight text-right pr-4">dist[v]</div>
+                            <div class="flex gap-2" id="row-dist"></div>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="w-16 text-[10px] font-mono text-ide-yellow text-right pr-4">Status</div>
+                            <div class="flex gap-2" id="row-visited"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Console -->
+            <div class="h-28 border-t border-white/5 bg-black p-4 overflow-y-auto custom-scrollbar flex flex-col-reverse font-mono text-[11px]">
+                <div id="console-logs" class="flex flex-col space-y-1"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        // -------------------------------------------------------------
+        // DATABASE CODE
+        // -------------------------------------------------------------
+        const codes = {
+            c: {
+                simple: `// Version Tableau Simple O(V^2)
+int extract_min(int dist[], bool visited[]) {
+    int min = INF, min_idx = -1;
+    for (int v = 0; v < V; v++)
+        if (!visited[v] && dist[v] <= min) {
+            min = dist[v];
+            min_idx = v;
         }
+    return min_idx;
+}
 
-        // === 5. CONTRÔLES UTILISATEURS ===
-        function startSimulation() {
-            const startNode = document.getElementById('startNode').value;
-            steps = generateDijkstraSteps(startNode);
-            currentStepIndex = 0;
-            renderStep(steps[currentStepIndex]);
-        }
+void dijkstra(int graph[V][V], int src) {
+    int dist[V]; bool visited[V];
+    for (int i = 0; i < V; i++) {
+        dist[i] = INF;
+        visited[i] = false;
+    }
+    dist[src] = 0;
 
-        document.getElementById('btnReset').addEventListener('click', startSimulation);
-        document.getElementById('startNode').addEventListener('change', startSimulation);
-        
-        document.getElementById('btnNext').addEventListener('click', () => {
-            if (currentStepIndex < steps.length - 1) {
-                currentStepIndex++;
-                renderStep(steps[currentStepIndex]);
+    for (int count = 0; count < V - 1; count++) {
+        int u = extract_min(dist, visited);
+        if (u == -1) break;
+        visited[u] = true;
+        for (int v = 0; v < V; v++)
+            if (!visited[v] && graph[u][v] && dist[u] + graph[u][v] < dist[v])
+                dist[v] = dist[u] + graph[u][v];
+    }
+}`,
+                heap: `// Version Tas Binaire O(A log S)
+typedef struct { int v, d; } Node;
+
+void dijkstra(Graph* g, int src) {
+    PriorityQueue* pq = createPQ();
+    int dist[V];
+    for (int i = 0; i < V; i++) dist[i] = INF;
+    
+    dist[src] = 0;
+    push(pq, (Node){src, 0});
+
+    while (!isEmpty(pq)) {
+        Node current = pop(pq);
+        int u = current.v;
+        if (current.d > dist[u]) continue;
+
+        for (Edge* e = g->adj[u]; e; e = e->next) {
+            int v = e->to;
+            if (dist[u] + e->weight < dist[v]) {
+                dist[v] = dist[u] + e->weight;
+                push(pq, (Node){v, dist[v]});
             }
+        }
+    }
+}`
+            },
+            ocaml: {
+                simple: `(* Version O(S^2) sur Array *)
+let dijkstra graph src =
+  let n = Array.length graph in
+  let dist = Array.make n max_int in
+  let visited = Array.make n false in
+  dist.(src) <- 0;
+  
+  for _ = 1 to n do
+    let u = ref (-1) in
+    let min_d = ref max_int in
+    for i = 0 to n - 1 do
+      if not visited.(i) && dist.(i) <= !min_d then
+        (min_d := dist.(i); u := i)
+    done;
+    if !u <> -1 && !min_d <> max_int then begin
+      visited.(!u) <- true;
+      for v = 0 to n - 1 do
+        if graph.(!u).(v) > 0 && 
+           dist.(!u) + graph.(!u).(v) < dist.(v) then
+          dist.(v) <- dist.(!u) + graph.(!u).(v)
+      done
+    end
+  done; dist`,
+                heap: `(* Version O(A log S) avec Prio Queue *)
+let dijkstra adj n src =
+  let dist = Array.make n max_int in
+  let pq = PriorityQueue.empty () in
+  dist.(src) <- 0;
+  PriorityQueue.push pq (0, src);
+
+  while not (PriorityQueue.is_empty pq) do
+    let (d, u) = PriorityQueue.pop pq in
+    if d <= dist.(u) then
+      List.iter (fun (v, w) ->
+        if dist.(u) + w < dist.(v) then begin
+          dist.(v) <- dist.(u) + w;
+          PriorityQueue.push pq (dist.(v), v)
+        end
+      ) adj.(u)
+  done; dist`
+            }
+        };
+
+        let currentLang = 'c';
+        let currentStrat = 'simple';
+
+        /**
+         * Coloration syntaxique robuste en une seule passe 
+         * pour éviter d'injecter des balises HTML les unes dans les autres.
+         */
+        function updateCode() {
+            const display = document.getElementById('code-display');
+            const filename = document.getElementById('code-filename');
+            const raw = codes[currentLang][currentStrat];
+            
+            // Échapper les caractères spéciaux HTML en amont
+            let text = raw
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+
+            // Définir les motifs (l'ordre compte)
+            const patterns = [
+                { name: 'comment', re: /(\/\/.*|\(\*.*?\*\))/g },
+                { name: 'keyword', re: /\b(int|void|bool|let|in|if|then|else|for|to|do|while|struct|typedef|ref|Array|List|true|false|max_int|max_float|ref|mutable|break|continue|return)\b/g },
+                { name: 'identifier', re: /\b(dist|visited|graph|src|u|v|pq|push|pop|min_idx|min_d|count|isEmpty|current|Node|Graph|Edge|weight|to|next|adj|d|w|INF)\b/g },
+                { name: 'number', re: /\b(\d+)\b/g }
+            ];
+
+            // Construire une seule grosse Regex avec des groupes capturants
+            const bigRegex = new RegExp(patterns.map(p => `(${p.re.source})`).join('|'), 'g');
+
+            // Remplacement en une passe
+            let highlighted = text.replace(bigRegex, (match, ...groups) => {
+                // Trouver quel groupe a matché
+                const index = groups.findIndex((g, i) => g !== undefined && i < patterns.length);
+                if (index === -1) return match;
+
+                const type = patterns[index].name;
+                const classMap = {
+                    comment: 'text-ide-comment',
+                    keyword: 'text-ide-keyword',
+                    identifier: 'text-zinc-200 font-medium',
+                    number: 'text-ide-string'
+                };
+
+                return `<span class="${classMap[type]}">${match}</span>`;
+            });
+            
+            display.innerHTML = highlighted;
+            filename.textContent = `dijkstra.${currentLang === 'c' ? 'c' : 'ml'}`;
+            
+            // Mise à jour de l'UI des boutons
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`btn-${currentLang}`).classList.add('active');
+            document.getElementById(`btn-${currentStrat}`).classList.add('active');
+        }
+
+        window.setLanguage = l => { currentLang = l; updateCode(); };
+        window.setStrategy = s => { currentStrat = s; updateCode(); };
+        updateCode();
+
+        // -------------------------------------------------------------
+        // ANIMATION ENGINE
+        // -------------------------------------------------------------
+        const INF = 999;
+        const NUM_NODES = 5;
+        const graphData = [
+            [0, 4, 2, 0, 0], [0, 0, 0, 2, 0], [0, 1, 0, 5, 4], [0, 0, 0, 0, 1], [0, 0, 0, 0, 0]
+        ];
+        const nodePositions = [
+            { x: 0.1, y: 0.5 }, { x: 0.4, y: 0.2 }, { x: 0.4, y: 0.8 }, { x: 0.7, y: 0.2 }, { x: 0.9, y: 0.5 }
+        ];
+
+        let dist = [], visited = [], state = 'FIND_MIN', u = -1, v = -1, neighbors = [], nIdx = 0;
+        let isPlaying = false, isFinished = false, animationId = null;
+
+        const canvas = document.getElementById('graph-canvas'), ctx = canvas.getContext('2d');
+        const rNodes = document.getElementById('row-nodes'), rDist = document.getElementById('row-dist'), rVis = document.getElementById('row-visited');
+        const speed = document.getElementById('speed-slider'), logs = document.getElementById('console-logs');
+        const iconPlay = document.getElementById('icon-play');
+
+        function log(m, c = "text-zinc-400") {
+            const d = document.createElement('div'); d.className = c; d.textContent = m;
+            logs.appendChild(d); logs.parentElement.scrollTop = logs.parentElement.scrollHeight;
+        }
+
+        function init() {
+            dist = Array(NUM_NODES).fill(INF); visited = Array(NUM_NODES).fill(false);
+            dist[0] = 0; state = 'FIND_MIN'; u = -1; v = -1; neighbors = []; nIdx = 0; isFinished = false;
+            buildMemoryDOM(); resizeCanvas(); draw(); logs.innerHTML = '';
+            log("> Init_Dijkstra: dist[0]=0, count=0", "text-ide-accentLight");
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const w = canvas.width, h = canvas.height, r = 24;
+
+            // Arêtes
+            for(let i=0; i<NUM_NODES; i++) {
+                for(let j=0; j<NUM_NODES; j++) {
+                    if(graphData[i][j] > 0) {
+                        let active = (!isFinished && state === 'RELAX' && i === u && j === v);
+                        drawArrow(i, j, graphData[i][j], active ? "#ec4899" : "#27272a", active ? 3 : 2, active);
+                    }
+                }
+            }
+            // Nœuds
+            for(let n=0; n<NUM_NODES; n++) {
+                const nx = nodePositions[n].x*w, ny = nodePositions[n].y*h;
+                ctx.beginPath(); ctx.arc(nx, ny, r, 0, 7);
+                ctx.fillStyle = (n===u) ? "#3b82f6" : (state==='RELAX'&&n===v) ? "#ec4899" : visited[n] ? "#ca8a04" : "#111";
+                ctx.strokeStyle = (n===u) ? "#93c5fd" : (state==='RELAX'&&n===v) ? "#f9a8d4" : visited[n] ? "#fde047" : "#333";
+                ctx.lineWidth = (n===u||(state==='RELAX'&&n===v)) ? 4 : 2;
+                ctx.fill(); ctx.stroke();
+                ctx.fillStyle = "white"; ctx.font = "bold 14px 'Inter'"; ctx.textAlign="center"; ctx.fillText(n, nx, ny+5);
+            }
+        }
+
+        function drawArrow(from, to, weight, color, width, highlight) {
+            const w = canvas.width, h = canvas.height;
+            const x1 = nodePositions[from].x*w, y1 = nodePositions[from].y*h;
+            const x2 = nodePositions[to].x*w, y2 = nodePositions[to].y*h;
+            const angle = Math.atan2(y2-y1, x2-x1), rad = 24;
+            const sx = x1+Math.cos(angle)*rad, sy = y1+Math.sin(angle)*rad;
+            const ex = x2-Math.cos(angle)*rad, ey = y2-Math.sin(angle)*rad;
+
+            ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = width;
+            ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+            
+            ctx.beginPath(); ctx.moveTo(ex, ey);
+            ctx.lineTo(ex-10*Math.cos(angle-0.5), ey-10*Math.sin(angle-0.5));
+            ctx.lineTo(ex-10*Math.cos(angle+0.5), ey-10*Math.sin(angle+0.5));
+            ctx.fillStyle = color; ctx.fill();
+
+            const tx = (sx+ex)/2, ty = (sy+ey)/2;
+            ctx.save();
+            ctx.shadowBlur = 10; ctx.shadowColor = "black";
+            ctx.beginPath(); ctx.arc(tx, ty, 14, 0, 7); ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fill();
+            ctx.fillStyle = highlight ? "white" : "#a1a1aa";
+            ctx.font = "bold 16px 'Fira Code'"; ctx.textAlign="center"; ctx.textBaseline="middle";
+            ctx.fillText(weight, tx, ty);
+            ctx.restore();
+        }
+
+        function buildMemoryDOM() {
+            rNodes.innerHTML = rDist.innerHTML = rVis.innerHTML = '';
+            for(let i=0; i<NUM_NODES; i++) {
+                rNodes.innerHTML += `<div class="w-10 text-center font-mono text-[10px] text-zinc-500">${i}</div>`;
+                rDist.innerHTML += `<div id="d-${i}" class="w-10 h-10 flex items-center justify-center rounded border border-white/5 bg-white/5 text-xs font-mono">${dist[i]==INF?'∞':dist[i]}</div>`;
+                rVis.innerHTML += `<div id="v-${i}" class="w-10 h-10 flex items-center justify-center rounded border border-white/5 bg-white/5 text-xs font-mono text-zinc-500">${visited[i]?'✓':'?'}</div>`;
+            }
+        }
+
+        function updateMemoryUI() {
+            for(let i=0; i<NUM_NODES; i++) {
+                const de = document.getElementById(`d-${i}`), ve = document.getElementById(`v-${i}`);
+                if (!de || !ve) continue;
+                de.className = "w-10 h-10 flex items-center justify-center rounded border border-white/5 bg-white/5 text-xs font-mono array-cell";
+                ve.className = de.className + " text-zinc-500";
+                de.textContent = dist[i]==INF?'∞':dist[i];
+                ve.innerHTML = visited[i] ? '<i data-lucide="check" class="w-4 h-4 text-ide-yellow"></i>' : '?';
+                if(i===u) de.classList.add('cell-highlight-u');
+                if(state==='RELAX'&&i===v) de.classList.add('cell-highlight-v');
+                if(visited[i]) ve.classList.add('cell-visited');
+            }
+            lucide.createIcons();
+        }
+
+        function step() {
+            if(isFinished) return;
+            if(state === 'FIND_MIN') {
+                let m=INF, mi=-1;
+                for(let i=0; i<NUM_NODES; i++) if(!visited[i] && dist[i]<=m) { m=dist[i]; mi=i; }
+                if(mi===-1 || m===INF) { isFinished=true; pause(); log("> Algorithme terminé.", "text-ide-green font-bold"); return; }
+                u = mi; visited[u] = true; neighbors = [];
+                for(let i=0; i<NUM_NODES; i++) if(graphData[u][i]>0 && !visited[i]) neighbors.push(i);
+                nIdx = 0; log(`[Extract] Min = ${u} (d=${dist[u]})`, "text-ide-accentLight");
+                state = neighbors.length > 0 ? 'RELAX' : 'FIND_MIN';
+            } else {
+                v = neighbors[nIdx];
+                let alt = dist[u] + graphData[u][v];
+                if(alt < dist[v]) {
+                    dist[v] = alt; log(`[Relax] ${u}->${v} : d=${alt}`, "text-ide-green");
+                    const el = document.getElementById(`d-${v}`);
+                    if (el) { el.classList.add('cell-updated'); setTimeout(()=>el.classList.remove('cell-updated'), 500); }
+                }
+                nIdx++; if(nIdx >= neighbors.length) { state = 'FIND_MIN'; u = -1; v = -1; }
+            }
+            updateMemoryUI(); draw();
+        }
+
+        function loop() { if(isPlaying && !isFinished) { step(); animationId = setTimeout(loop, speed.value); } }
+        function play() { isPlaying=true; iconPlay.setAttribute('data-lucide', 'pause'); lucide.createIcons(); loop(); }
+        function pause() { isPlaying=false; iconPlay.setAttribute('data-lucide', 'play'); lucide.createIcons(); clearTimeout(animationId); }
+        function resizeCanvas() { const r = canvas.parentElement.getBoundingClientRect(); canvas.width=r.width; canvas.height=r.height; }
+
+        document.getElementById('btn-play').onclick = () => isPlaying ? pause() : play();
+        document.getElementById('btn-step').onclick = () => { pause(); step(); };
+        document.getElementById('btn-reset').onclick = () => { pause(); init(); };
+        window.onresize = () => { resizeCanvas(); draw(); };
+        document.addEventListener("DOMContentLoaded", () => {
+            renderMathInElement(document.body, { delimiters: [{left:'$$', right:'$$', display:true}, {left:'$', right:'$', display:false}] });
         });
-
-        // Lancement initial
-        startSimulation();
-
+        init();
     </script>
 </body>
 </html>
